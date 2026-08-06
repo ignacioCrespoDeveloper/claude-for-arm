@@ -88,7 +88,8 @@ cd ~/code/my-sf-project
 claude
 ```
 
-Type `/` and look for `sf-ticket-solution`, `sf-tdd`, `sf-flow-design`, `sf-data-deploy`.
+Type `/` and look for `sf-ticket-solution`, `sf-pricing-procedure`, `sf-tdd`,
+`sf-flow-design` and `sf-data-deploy`.
 If they are missing, jump to [Troubleshooting](#troubleshooting).
 
 ## 5. Test them for real
@@ -160,9 +161,10 @@ refresh steps. If it hands you an element with no position, push back — order 
 I need to move the product catalog from mysandbox into the new dev org `mydev`.
 ```
 
-**Good looks like:** the 16-object RCA load order, external-ID upserts, a sample dry run
-before full volume, and the post-load decision table refresh. It should confirm the target
-alias with you before any write, and refuse to write to production without you saying so.
+**Good looks like:** the 16-object RCA load order, external-ID upserts, a sample dry run as
+step one, and the post-load decision table refresh — written as a runbook **for you to run**,
+with the check to make after each step. It should not execute any of it. If it offers to run
+the load for you, that is a bug in the skill; see the note below.
 
 ### `/sf-flow-design`
 
@@ -207,9 +209,28 @@ The skills read your org constantly, so allow the read-only commands once. In th
 ```
 
 Deliberately **not** in that list: `sf data upsert`, `sf data delete`, `sf project deploy
-start`. Anything that writes should keep asking.
+start`. Anything that writes should keep asking — and the skills are instructed never to run
+them anyway, so this allowlist and the skills agree with each other.
 
-## 7. Make them yours
+## 7. They never touch your org
+
+Every skill is read-only against Salesforce. It will query, describe and retrieve as much as
+it needs, and then **hand you the change** — a command to paste, or a numbered Setup step.
+It does not load data, deploy metadata, activate a version, refresh a decision table, or
+change a setting. Even `sf project deploy start --dry-run` is off limits, because it still
+registers a deployment against the org.
+
+Writing files **in your repo** — a TDD, a `.flow-meta.xml`, CSV templates — is expected and
+is not covered by this.
+
+The single exception is you telling it, explicitly and in the moment, to run a named command
+against a named org. It will not infer that from the task looking like it needs doing, and
+it will not carry that permission forward to the next command.
+
+If you would rather it never execute anything at all, delete the exception paragraph from
+each `SKILL.md` — it is the last paragraph of the read-only section in every one of them.
+
+## 8. Make them yours
 
 The skills are markdown. That is the whole point — when one keeps getting something wrong
 for your org, fix it once:

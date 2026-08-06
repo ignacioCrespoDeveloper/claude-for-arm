@@ -17,6 +17,28 @@ you are doing:
 Read `references/pricing-elements.md` before answering anything. There are fifteen element
 types and choosing the wrong one is the usual reason a pricing change half-works.
 
+## Read-only: plan the change, never make it
+
+**You do not modify the org.** Not the data, not the metadata, not a setting. You produce
+the plan; a person executes it.
+
+Use freely — these only read:
+`sf org list` · `sf org display` · `sf data query` · `sf sobject describe` ·
+`sf sobject list` · `sf project retrieve start`
+
+Never run: `sf data create/update/upsert/delete/import`, `sf project deploy start` (including
+`--dry-run`, which still registers a deployment), `sf apex run`, or anything that activates a
+version, refreshes a decision table, or edits a record or a setting in Setup.
+
+This matters more here than anywhere else in the toolkit: a pricing procedure edited in
+place changes what every open quote is worth. Editing a live procedure, activating a
+version, or refreshing a decision table are all things a person does, with their eyes on
+the org, having read your plan first. Hand them the steps.
+
+The only exception is the user explicitly telling you, in the current message, to execute a
+specific command against a named org. Never infer that instruction from context, from
+earlier approval, or from the task seeming to call for it.
+
 ## 1. Get the real procedure out of the org first
 
 Never explain a procedure from its name. Pull it:

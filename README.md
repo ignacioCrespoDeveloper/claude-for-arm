@@ -10,9 +10,8 @@ repo you are working in. Cloning this repo installs them.
 
 ```bash
 git clone https://github.com/ignacioCrespoDeveloper/claude-for-arm.git
-```
+cd claude-for-arm
 
-```bash
 npm run dev      # http://localhost:5173
 npm run build    # type check + production bundle
 ```
@@ -35,11 +34,19 @@ page has a second tab for its template.
 | [`/sf-ticket-solution`](.claude/skills/sf-ticket-solution/SKILL.md) | **RCA-specific.** Ticket → root cause with the query that proves it, the chosen mechanism and the rejected one, numbered steps with full Setup paths | A **Jira ticket body**, in one copyable block |
 | [`/sf-pricing-procedure`](.claude/skills/sf-pricing-procedure/SKILL.md) | **RCA-specific.** Reads a pricing procedure out of the org and explains what it does to a price, element by element — then what to add, and where in the sequence, to get an outcome | A walkthrough, or an add-this-element plan |
 | [`/sf-tdd`](.claude/skills/sf-tdd/SKILL.md) | Technical Design Document against a fixed template — data model, components, integrations, security, limits, test and deployment strategy | `docs/tdd/<TICKET>-<slug>.md` with mermaid diagrams |
-| [`/sf-flow-design`](.claude/skills/sf-flow-design/SKILL.md) | Flow type, trigger, entry criteria, elements with fault paths, test cases — optionally the metadata XML | A flow spec, optionally a dry-run-validated `.flow-meta.xml` |
+| [`/sf-flow-design`](.claude/skills/sf-flow-design/SKILL.md) | Flow type, trigger, entry criteria, elements with fault paths, test cases — optionally the metadata XML | A flow spec, optionally a ready-to-validate `.flow-meta.xml` |
 | [`/sf-data-deploy`](.claude/skills/sf-data-deploy/SKILL.md) | Load and migration planning — object order, external IDs, `sf` CLI commands, per-step validation, rollback | A load plan with copy-pasteable commands |
 
 You can type the command, or just describe the task — each skill's `description` frontmatter is
 written so Claude reaches for the right one unprompted.
+
+**None of them write to your org.** Every skill queries, describes and retrieves as much as it
+needs, then hands the change over as a command to paste or a numbered Setup step. No data loads,
+no deploys, no activating a version or refreshing a decision table — not even
+`sf project deploy start --dry-run`, which still registers a deployment. Writing files in your
+repo (a TDD, a `.flow-meta.xml`, CSV templates) is expected; the org is what is off limits. Each
+`SKILL.md` carries the rule as its own section near the top, with one narrow exception: you
+telling it explicitly, in the moment, to run a named command against a named org.
 
 ### What `/sf-pricing-procedure` knows about pricing
 
