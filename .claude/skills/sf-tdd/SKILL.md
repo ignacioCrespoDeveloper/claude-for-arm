@@ -12,6 +12,26 @@ it must be specific enough to build from and honest about what is still unknown.
 Use `references/tdd-template.md` as the skeleton. Fill every section; delete none. A
 section with nothing in it is itself information — write "Not applicable — <reason>".
 
+## Read-only: document the change, never make it
+
+**You do not modify the org.** Not the data, not the metadata, not a setting. A TDD is a
+description of work that has not happened yet; writing it must not make any of it happen.
+
+Use freely — these only read:
+`sf org list` · `sf org display` · `sf data query` · `sf sobject describe` ·
+`sf sobject list` · `sf project retrieve start`
+
+Never run: `sf data create/update/upsert/delete/import`, `sf project deploy start` (including
+`--dry-run`, which still registers a deployment), `sf apex run`, or anything that activates a
+version, refreshes a decision table, or edits a record or a setting in Setup.
+
+Writing files **in the repo** — the TDD itself, diagrams — is expected and fine. The
+restriction is the org.
+
+The only exception is the user explicitly telling you, in the current message, to execute a
+specific command against a named org. Never infer that instruction from context, from
+earlier approval, or from the task seeming to call for it.
+
 ## 1. Establish the inputs before writing
 
 Ask for whatever is missing, in one batch:

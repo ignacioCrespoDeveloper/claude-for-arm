@@ -128,13 +128,13 @@ export const SKILLS: SkillTool[] = [
     name: 'Flow design',
     blurb:
       'Picks the right flow type, defines trigger and entry criteria, lays out elements with fault paths and test cases — and can emit deployable Flow metadata XML.',
-    produces: 'A flow spec, optionally a validated .flow-meta.xml',
+    produces: 'A flow spec, optionally a ready-to-validate .flow-meta.xml',
     triggers: ['"build a flow that…"', '"review this flow"', '"why is this flow failing"'],
     bullets: [
       'Before-save for same-record updates; the ladder is explicit',
       'No DML or Get inside a loop — the most common review rejection',
       'Fault path on every element that can fail, routed somewhere real',
-      'Generated XML is dry-run deployed before it is handed over',
+      'Writes the XML into the repo and hands over the validation command — it never deploys',
     ],
     status: 'live',
   },
@@ -144,14 +144,14 @@ export const SKILLS: SkillTool[] = [
     command: 'sf-data-deploy',
     name: 'Data deployment & migration',
     blurb:
-      'Plans and runs a data load: dependency order, external IDs, the sf CLI commands, per-step validation, and a rollback that actually rolls back.',
+      'Plans a data load as a runbook someone can execute: dependency order, external IDs, the sf CLI commands, per-step validation, and a rollback that actually rolls back.',
     produces: 'A load plan with copy-pasteable commands and checks',
     triggers: ['"load this into the sandbox"', '"migrate this data"', '"seed the org"'],
     bullets: [
       'Ships the full 16-object RCA load order, including the two-pass self-lookups',
       'External-ID upsert by default, so a re-run fixes instead of duplicating',
       'Lists what automation to suspend — and the step that turns it back on',
-      'Sample-load dry run first; production writes need explicit confirmation',
+      'A runbook the operator executes: sample load first, checks between steps, never run for you',
     ],
     status: 'live',
   },

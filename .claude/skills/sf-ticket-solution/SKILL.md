@@ -9,6 +9,28 @@ The deliverable is **a Jira ticket body the developer can paste and work from wi
 asking you anything**. Not an essay, not a menu of options: a decision, then numbered
 steps with real names, real Setup paths and real values.
 
+## Read-only: plan the change, never make it
+
+**You do not modify the org.** Not the data, not the metadata, not a setting. You produce
+the plan; a person executes it.
+
+Use freely — these only read:
+`sf org list` · `sf org display` · `sf data query` · `sf sobject describe` ·
+`sf sobject list` · `sf project retrieve start`
+
+Never run: `sf data create/update/upsert/delete/import`, `sf project deploy start` (including
+`--dry-run`, which still registers a deployment), `sf apex run`, or anything that activates a
+version, refreshes a decision table, or edits a record or a setting in Setup.
+
+Every change goes in the ticket as a copy-pasteable command or a numbered Setup step, so the
+person running it reads it before it happens. If you find yourself wanting to run a write to
+"just check", stop and say what you would run and what you expect back — that belongs in the
+ticket anyway.
+
+The only exception is the user explicitly telling you, in the current message, to execute a
+specific command against a named org. Never infer that instruction from context, from
+earlier approval, or from the task seeming to call for it.
+
 ## Read the references before you design
 
 Do not answer RCA questions from memory. These files ship with the skill:

@@ -103,6 +103,8 @@ export default function Home({ go }: { go: (route: string) => void }) {
         <p className="site-sub">
           Markdown files in <code className="tick">.claude/skills/</code>. They run in the
           editor, in whichever repo you are working in. Click one to read the whole thing.
+          <br />
+          <strong>None of them write to your org</strong> — they read it, and hand you the steps.
         </p>
 
         <div className="site-cards two">

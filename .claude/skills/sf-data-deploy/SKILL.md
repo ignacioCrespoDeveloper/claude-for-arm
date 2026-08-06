@@ -1,12 +1,38 @@
 ---
 name: sf-data-deploy
-description: Plan and execute a Salesforce data load or migration — object order, external IDs, CSV/plan templates, sf CLI or Data Loader commands, validation and rollback. Use when the user asks to load, migrate, seed, export or fix data between orgs, or to deploy a Revenue Cloud catalog into an org.
+description: Plan a Salesforce data load or migration — object order, external IDs, CSV/plan templates, the sf CLI commands to run, per-step validation and rollback. Produces the runbook; the operator executes it. Use when the user asks to load, migrate, seed, export or fix data between orgs, or to deploy a Revenue Cloud catalog into an org.
 ---
 
 # Salesforce data deployment & migration
 
-Data loads fail on relationships and on order, almost never on the data itself. The plan is
-the deliverable; the commands are the easy part.
+Data loads fail on relationships and on order, almost never on the data itself. **The plan is
+the deliverable** — a runbook someone can execute step by step. The commands are the easy
+part, and they are theirs to run.
+
+## Read-only: write the runbook, never run it
+
+**You do not modify the org.** You produce the load plan; a person executes it, watching the
+results between steps.
+
+Use freely — these only read:
+`sf org list` · `sf org display` · `sf data query` · `sf data export` ·
+`sf sobject describe` · `sf sobject list` · `sf project retrieve start`
+
+Never run: `sf data create/update/upsert/delete/import`, `sf project deploy start`,
+`sf apex run`, or any Setup change — **including the sample dry run in §8**. That sample load
+is step one of the runbook, not something you do to check your own work.
+
+Reading the source org to build the plan is not only allowed, it is the job: query the
+counts, describe the objects, confirm the external ID fields exist. Every write goes into
+the plan as a copy-pasteable command.
+
+Building files **locally** — CSV templates, plan files, the runbook — is expected. The
+restriction is the org.
+
+The only exception is the user explicitly telling you, in the current message, to execute a
+specific command against a named org. Never infer it from context, from earlier approval, or
+from the task obviously needing it. A data load is the least reversible thing in this
+toolkit; when in doubt, hand it over.
 
 ## 1. Establish the shape of the job
 
@@ -147,7 +173,7 @@ e.g. `SELECT COUNT() FROM Product2 WHERE IsActive = true` → 412
 - Spot-check in the UI, not only in SOQL — record type, page layout and visibility problems
   do not show up in a query.
 
-## 8. Always dry-run first
+## 8. The plan always starts with a dry run
 
 Load a 5–10 row sample of each object into the target, in order, and verify the
 relationships resolved before running the full volume. Every failure found on the sample is
@@ -158,17 +184,29 @@ head -11 products.csv > products-sample.csv
 sf data upsert bulk -s Product2 -f products-sample.csv -i ProductCode -w 10 -o TARGET
 ```
 
-Then check the results file the CLI writes — `sf data upsert resume` reports both success
-and failure counts, and the failure CSV names the row and the reason.
+This is **step one of the runbook, handed to the operator** — not something you run to check
+your own work. Write it as a step, with the query that proves the relationships resolved and
+the go/no-go it feeds: if the sample fails, the full load does not start.
 
-## 9. Guardrails
+## 9. Guardrails to write into the plan
 
-- Confirm the **target org alias** out loud before any write command, and never run a load
-  or a delete against production without the user explicitly confirming that org.
-- `sf data delete bulk` is irreversible — require an explicit confirmation and a backup
-  first, and quote back the record count that will be deleted.
-- Report load results honestly: rows attempted, succeeded, failed, and the actual error
-  text from the failure file. Never report a load as clean without reading the results.
+You are not running these, so the guardrails have to survive on the page. Put each one in
+the runbook where the operator will hit it:
+
+- **Name the target org alias in every command.** Never leave `-o <alias>` as a placeholder
+  in a step that writes — an unqualified command run against the wrong org is the failure
+  this whole skill exists to prevent.
+- **Flag production explicitly.** If any step targets production, mark it, and say what
+  confirmation the operator should have before running it.
+- **`sf data delete bulk` is irreversible.** Any delete step carries the record count it
+  will remove and the backup command that must have run first, as its own numbered step.
+- **Tell them what to check after each step**, not just at the end: the query and the number
+  it should return. `sf data upsert resume` reports success and failure counts, and the
+  failure CSV names the row and the reason — say so in the step, because an operator
+  watching only for a green exit code will miss a partial load.
+- **Say what a bad result looks like** and what to do about it. A runbook that only
+  describes the happy path leaves the person holding it with no decision to make when
+  step 4 fails.
 
 Related: the **RCA Product Builder** exports a workbook already in this load order,
 `/sf-tdd` documents the deployment plan, `/sf-ticket-solution` when the data issue is

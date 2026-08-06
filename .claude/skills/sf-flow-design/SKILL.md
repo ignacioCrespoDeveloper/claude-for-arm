@@ -15,6 +15,26 @@ Two possible outputs, and you should confirm which before starting:
 
 Default to the spec unless the user asks for the XML or the repo is clearly an SFDX project.
 
+## Read-only: design the flow, never deploy it
+
+**You do not modify the org.** Not the data, not the metadata, not a setting. You write the
+spec and, when asked, the XML in the repo — a person deploys it.
+
+Use freely — these only read:
+`sf org list` · `sf org display` · `sf data query` · `sf sobject describe` ·
+`sf sobject list` · `sf project retrieve start`
+
+Never run: `sf project deploy start` — **including `--dry-run`**, which still registers a
+deployment against the org — `sf data create/update/upsert/delete/import`, `sf apex run`, or
+anything that activates a flow or edits a record or setting in Setup.
+
+Writing the `.flow-meta.xml` **into the repo** is expected. Getting it into the org is the
+developer's step, and they run the validation themselves — see §6.
+
+The only exception is the user explicitly telling you, in the current message, to execute a
+specific command against a named org. Never infer that instruction from context, from
+earlier approval, or from the task seeming to call for it.
+
 ## 1. Pick the flow type
 
 | Need | Type | Notes |
@@ -106,17 +126,20 @@ spot a missing path.
 - Match the API version already used in the repo (`sfdx-project.json` / other flow files).
 - Every `<connector>` must point at an element that exists; every element needs `<label>`,
   `<name>`, `<locationX>`, `<locationY>`.
-- Set `<status>` to `Draft` unless the user asks for `Active`. Never deploy an untested
-  flow as Active to a shared org.
-- **Validate before claiming it works:**
+- Set `<status>` to `Draft` unless the user asks for `Active`. An untested flow should never
+  reach a shared org as Active.
+- **Hand over the validation command; do not run it.** State plainly that the XML is
+  unvalidated, and give the developer the command to check it themselves:
 
 ```bash
 sf project deploy start -d force-app/main/default/flows/<API_Name>.flow-meta.xml \
   --dry-run -o <alias>
 ```
 
-  A dry-run failure means the XML is wrong — fix it, do not hand over unvalidated metadata.
-  If no org is available, say plainly that the XML is unvalidated.
+  A dry-run failure means the XML is wrong. Tell them what to look at first if it fails —
+  connectors pointing at elements that do not exist, and a missing `<name>` or `<label>`,
+  are the usual causes. Hand-written Flow XML is verbose and easy to get subtly wrong, so
+  never present it as working; present it as ready to validate.
 
 ## 7. Reviewing an existing flow
 
