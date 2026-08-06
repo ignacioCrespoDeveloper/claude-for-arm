@@ -1,5 +1,8 @@
 # Installing the skills in your own Salesforce project
 
+The toolkit lives at
+**[github.com/ignacioCrespoDeveloper/claude-for-arm](https://github.com/ignacioCrespoDeveloper/claude-for-arm)**.
+
 Ten minutes, most of it the first real test. You need [Claude Code](https://claude.com/claude-code)
 and, ideally, a Salesforce org you can connect — the skills are markedly better with one.
 
@@ -18,10 +21,11 @@ and still override one per project.
 
 ## 2. Install
 
-From a clone of this repo:
+From a clone of the toolkit:
 
 ```bash
-git clone <this-repo> rca-toolkit && cd rca-toolkit
+git clone https://github.com/ignacioCrespoDeveloper/claude-for-arm.git rca-toolkit
+cd rca-toolkit
 
 # Recommended while testing — edits here are picked up by your project immediately
 tools/install-skills.sh ~/code/my-sf-project --link
@@ -38,6 +42,14 @@ tools/install-skills.sh ~/code/my-sf-project --only sf-ticket-solution,sf-data-d
 
 Existing skills of the same name are left alone; pass `--force` to replace them.
 `tools/install-skills.sh --help` lists everything.
+
+**Keeping them current.** With `--link`, `git pull` in the toolkit is the whole update — your
+project reads the same files. With a copy, pull and then re-run the installer with `--force`:
+
+```bash
+cd rca-toolkit && git pull
+tools/install-skills.sh ~/code/my-sf-project --force
+```
 
 Manual equivalent, if you would rather see exactly what happens:
 

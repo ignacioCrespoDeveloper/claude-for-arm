@@ -9,6 +9,10 @@ Builder**.
 repo you are working in. Cloning this repo installs them.
 
 ```bash
+git clone https://github.com/ignacioCrespoDeveloper/claude-for-arm.git
+```
+
+```bash
 npm run dev      # http://localhost:5173
 npm run build    # type check + production bundle
 ```
