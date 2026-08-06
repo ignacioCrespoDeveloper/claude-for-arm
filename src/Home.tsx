@@ -33,9 +33,9 @@ export default function Home({ go }: { go: (route: string) => void }) {
           deploy it.
         </h1>
         <p className="site-lead">
-          The tools we use on RCA engagements. Four Claude Code skills that turn a ticket into a
-          Jira-ready solution, write the TDD, design the Flow and plan the data load — plus a
-          browser tool that builds a load-ready catalog workbook.
+          The tools we use on RCA engagements. Five Claude Code skills that turn a ticket into a
+          Jira-ready solution, read and extend a pricing procedure, write the TDD, design the Flow
+          and plan the data load — plus a browser tool that builds a load-ready catalog workbook.
         </p>
       </div>
 

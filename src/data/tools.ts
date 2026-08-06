@@ -85,6 +85,27 @@ export const SKILLS: SkillTool[] = [
   },
   {
     kind: 'skill',
+    id: 'pricing-procedure',
+    command: 'sf-pricing-procedure',
+    name: 'Pricing procedures',
+    blurb:
+      'Reads an existing pricing procedure out of the org and explains what it actually does to a price, element by element — then tells you exactly what to add, and where in the sequence, to get the pricing outcome you want.',
+    produces: 'A procedure walkthrough, or an add-this-element plan',
+    triggers: [
+      '"explain this pricing procedure"',
+      '"how do I add a volume discount"',
+      '"why did this line price at X"',
+    ],
+    bullets: [
+      'Pulls the real procedure — ExpressionSetDefinition plus its version — instead of describing it from its name',
+      'All fifteen elements catalogued: what each reads and writes, its decision table, and its prerequisites',
+      'Recipes from goal to element: volume vs. true tiering, segment pricing, attribute pricing, floors, proration, rounding',
+      'Order is treated as the design — every answer says where in the sequence and why there',
+    ],
+    status: 'live',
+  },
+  {
+    kind: 'skill',
     id: 'tdd',
     command: 'sf-tdd',
     name: 'TDD authoring',

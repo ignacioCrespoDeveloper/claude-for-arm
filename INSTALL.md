@@ -115,6 +115,31 @@ Currently every rep can add it.
 Expect a qualification/disqualification design, the rejected alternative stated, and a
 fail-closed acceptance criterion for accounts with no region.
 
+### `/sf-pricing-procedure`
+
+Start by asking it to explain something you already have:
+
+```
+/sf-pricing-procedure
+
+Explain what our pricing procedure does. Org: mysandbox.
+```
+
+**Good looks like:** it lists the expression sets, retrieves the one you point it at
+(`ExpressionSetDefinition` *and* its version), then walks the elements in order with what
+each reads and writes — ending in a worked example with real numbers, and a section on what
+the procedure does *not* do.
+
+Then ask it for a change:
+
+```
+How would I give 15% off to accounts with Customer_Tier__c = 'Gold'?
+```
+
+**Good looks like:** a named element, its position in the sequence **and why there**, the
+decision table behind it, the context tag that must be mapped first, and the activation plus
+refresh steps. If it hands you an element with no position, push back — order is the design.
+
 ### `/sf-data-deploy`
 
 ```
