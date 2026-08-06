@@ -9,6 +9,9 @@ import rcaDomainMap from '../../.claude/skills/sf-ticket-solution/references/rca
 import rcaFailureModes from '../../.claude/skills/sf-ticket-solution/references/rca-failure-modes.md?raw';
 import jiraTemplate from '../../.claude/skills/sf-ticket-solution/references/jira-ticket-template.md?raw';
 import rcaDocs from '../../.claude/skills/sf-ticket-solution/references/rca-docs.md?raw';
+import pricingProcedure from '../../.claude/skills/sf-pricing-procedure/SKILL.md?raw';
+import pricingElements from '../../.claude/skills/sf-pricing-procedure/references/pricing-elements.md?raw';
+import pricingRecipes from '../../.claude/skills/sf-pricing-procedure/references/recipes.md?raw';
 import tdd from '../../.claude/skills/sf-tdd/SKILL.md?raw';
 import tddTemplate from '../../.claude/skills/sf-tdd/references/tdd-template.md?raw';
 import flowDesign from '../../.claude/skills/sf-flow-design/SKILL.md?raw';
@@ -47,6 +50,22 @@ export const SKILL_DOCS: Record<string, SkillDoc> = {
         name: 'Docs index',
         path: '.claude/skills/sf-ticket-solution/references/rca-docs.md',
         source: rcaDocs,
+      },
+    ],
+  },
+  'sf-pricing-procedure': {
+    source: pricingProcedure,
+    path: '.claude/skills/sf-pricing-procedure/SKILL.md',
+    references: [
+      {
+        name: 'Elements',
+        path: '.claude/skills/sf-pricing-procedure/references/pricing-elements.md',
+        source: pricingElements,
+      },
+      {
+        name: 'Recipes',
+        path: '.claude/skills/sf-pricing-procedure/references/recipes.md',
+        source: pricingRecipes,
       },
     ],
   },
