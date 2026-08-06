@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.vercel/
+*.local
+.DS_Store
+
+# Customer workbooks stay local. Deploying pushes this repo to a Git host, and
+# these files carry client catalog data. Drop .xlsx files in xlsx/ to read them
+# with `npm run dump`; nothing here is committed or bundled into the app.
+xlsx/*
+!xlsx/.gitkeep
