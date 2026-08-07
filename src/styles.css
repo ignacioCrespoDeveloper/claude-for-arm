@@ -761,3 +761,6 @@ table.grid-table td.check-cell input { width: 15px; height: 15px; accent-color: 
 @media (max-width: 720px) {
   .doc { padding: 20px; }
 }
+
+/* Explanatory line above a grid, e.g. the create-or-reference switch in pricing. */
+.hint-line { margin: 0 0 12px; font-size: 12px; color: var(--muted); max-width: 90ch; }

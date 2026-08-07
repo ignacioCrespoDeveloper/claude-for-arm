@@ -174,6 +174,75 @@ for (const [label, args, expected] of [
   if (got !== expected) failures.push(`${label}: expected ${expected}, got ${got}`);
 }
 
+// Referencing a record that already exists in the org, instead of creating it.
+console.log('\nExisting-record references:');
+{
+  const cell = (tabs, tabName, col, row = 0) => {
+    const tab = tabs.find((t) => t.name === tabName);
+    const i = tab.columns.indexOf(col);
+    return i === -1 ? undefined : tab.rows[row]?.[i];
+  };
+  const rowsOf = (tabs, name) => tabs.find((t) => t.name === name).rows.length;
+
+  const base = buildTabs(sampleModel());
+  const check = (label, got, expected) => {
+    const ok = JSON.stringify(got) === JSON.stringify(expected);
+    console.log(`  ${ok ? '✓' : '✗'} ${label}`);
+    if (!ok) failures.push(`${label}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(got)}`);
+  };
+
+  // A catalog that creates everything must export exactly what it did before.
+  check('no Id columns when nothing references an existing record',
+    base.find((t) => t.name === 'PricebookEntry').columns.some((c) => c.endsWith('Id')), false);
+
+  // Price book by Id: not created, and the entry resolves by Id with the name left blank.
+  const pbModel = sampleModel();
+  pbModel.pricebooks[0].existingId = '01sAA0000012345';
+  const pb = buildTabs(pbModel);
+  check('existing price book is not created', rowsOf(pb, 'Pricebook2'), rowsOf(base, 'Pricebook2') - 1);
+  check('PricebookEntry carries the price book Id', cell(pb, 'PricebookEntry', 'Pricebook2Id'), '01sAA0000012345');
+  check('…and leaves the name column blank', cell(pb, 'PricebookEntry', 'Pricebook2:Pricebook2:Name'), '');
+  check('selling model still resolves by name',
+    cell(pb, 'PricebookEntry', 'ProductSellingModel:ProductSellingModel:Name'),
+    cell(base, 'PricebookEntry', 'ProductSellingModel:ProductSellingModel:Name'));
+  check('no selling-model Id column when none is referenced',
+    pb.find((t) => t.name === 'PricebookEntry').columns.includes('ProductSellingModelId'), false);
+
+  // Selling model by Id: reaches both child tabs.
+  const smModel = sampleModel();
+  const smId = smModel.sellingModels[0].id;
+  smModel.sellingModels[0].existingId = '0PhAA0000098765';
+  const sm = buildTabs(smModel);
+  check('existing selling model is not created',
+    rowsOf(sm, 'ProductSellingModel'), rowsOf(base, 'ProductSellingModel') - 1);
+  const optRow = smModel.sellingModelOptions.findIndex((o) => o.sellingModelId === smId);
+  check('ProductSellingModelOption carries the Id',
+    cell(sm, 'ProductSellingModelOption', 'ProductSellingModelId', optRow), '0PhAA0000098765');
+  check('…and leaves its name column blank',
+    cell(sm, 'ProductSellingModelOption', 'ProductSellingModel:ProductSellingModel:Name', optRow), '');
+
+  // Mixed: models resolved by Id and by name in the same tab.
+  const otherRow = smModel.sellingModelOptions.findIndex((o) => o.sellingModelId !== smId);
+  if (otherRow !== -1) {
+    check('a created model in the same tab still resolves by name',
+      cell(sm, 'ProductSellingModelOption', 'ProductSellingModelId', otherRow), '');
+    check('…with its name column filled',
+      cell(sm, 'ProductSellingModelOption', 'ProductSellingModel:ProductSellingModel:Name', otherRow),
+      cell(base, 'ProductSellingModelOption', 'ProductSellingModel:ProductSellingModel:Name', otherRow));
+  }
+
+  // A malformed Id must be caught before the workbook is built.
+  const badModel = sampleModel();
+  badModel.pricebooks[0].existingId = 'not-an-id';
+  check('a malformed Id is an error',
+    validate(badModel).some((i) => i.severity === 'error' && i.message.includes('not a Salesforce Id')), true);
+
+  const wrongPrefix = sampleModel();
+  wrongPrefix.pricebooks[0].existingId = '01tAA0000012345';
+  check('a price book Id with the wrong prefix warns',
+    validate(wrongPrefix).some((i) => i.severity === 'warning' && i.message.includes('price book Ids start')), true);
+}
+
 if (failures.length) {
   console.log('\nFailures:');
   for (const f of failures) console.log(`  ✗ ${f}`);
