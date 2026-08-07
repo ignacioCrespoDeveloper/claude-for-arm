@@ -30,6 +30,9 @@ const dupes = <T>(rows: T[], key: (r: T) => string): string[] => {
 
 const API_NAME = /^[A-Za-z][A-Za-z0-9_]*$/;
 
+/** 15-character case-sensitive Id, or the 18-character case-safe form. */
+const SALESFORCE_ID = /^[a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?$/;
+
 /**
  * Every check here maps to something that actually fails (or silently
  * misbehaves) on import into Revenue Cloud — not style preferences.
@@ -160,10 +163,38 @@ export function validate(m: CatalogModel): Issue[] {
     if (sm.type !== 'TermDefined' && sm.pricingTerm)
       warn('pricing', `Selling model "${who}" sets a pricing term but is ${sm.type}, so the term is ignored.`);
   }
-  for (const d of dupes(m.sellingModels, (s) => s.name))
+  for (const d of dupes(
+    m.sellingModels.filter((s) => !s.existingId?.trim()),
+    (s) => s.name,
+  ))
     err('pricing', `Two selling models share the name "${d}"; pricing rows are matched by name.`);
-  for (const d of dupes(m.pricebooks, (p) => p.name))
+  for (const d of dupes(
+    m.pricebooks.filter((b) => !b.existingId?.trim()),
+    (p) => p.name,
+  ))
     err('pricing', `Two price books share the name "${d}".`);
+
+  // Records that point at something already in the org: the Id is what the loader will use,
+  // so a wrong one fails at import with an unhelpful message. Catch the shape here.
+  for (const sm of m.sellingModels)
+    checkExistingId(sm.existingId, `Selling model "${label(sm.name, 'untitled')}"`, null);
+  for (const b of m.pricebooks)
+    checkExistingId(b.existingId, `Price book "${label(b.name, 'untitled')}"`, '01s');
+
+  function checkExistingId(raw: string | undefined, who: string, prefix: string | null) {
+    const id = raw?.trim();
+    if (!id) return;
+    if (!SALESFORCE_ID.test(id))
+      err(
+        'pricing',
+        `${who} points at an existing record but "${id}" is not a Salesforce Id — they are 15 or 18 letters and digits.`,
+      );
+    else if (prefix && !id.startsWith(prefix))
+      warn(
+        'pricing',
+        `${who} has an Id starting "${id.slice(0, 3)}"; price book Ids start "${prefix}". Check you copied the right record.`,
+      );
+  }
   if (m.pricebooks.filter((p) => p.isStandard).length > 1)
     err('pricing', 'More than one price book is marked standard; an org has exactly one.');
 

@@ -171,6 +171,14 @@ export interface SellingModel {
   pricingTerm: number | null;
   pricingTermUnit: TermUnit;
   status: Status;
+  /**
+   * Salesforce Id of a record that already exists in the org. When set, the workbook does
+   * not create this selling model — it is left out of the `ProductSellingModel` tab, and
+   * `ProductSellingModelOption` / `PricebookEntry` point at it by Id instead of by name.
+   *
+   * Optional so catalogs saved before this existed still load.
+   */
+  existingId?: string;
 }
 
 /** ProductSellingModelOption — which selling models a product is sold under. */
@@ -188,6 +196,14 @@ export interface Pricebook {
   name: string;
   isStandard: boolean;
   isActive: boolean;
+  /**
+   * Salesforce Id of a price book that already exists in the org — almost always the
+   * standard one. When set, the workbook does not create it: the `Pricebook2` tab leaves it
+   * out and `PricebookEntry` points at it by Id instead of by name.
+   *
+   * Optional so catalogs saved before this existed still load.
+   */
+  existingId?: string;
 }
 
 export interface PricebookEntry {

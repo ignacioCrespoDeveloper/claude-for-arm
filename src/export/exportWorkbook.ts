@@ -76,6 +76,27 @@ export function buildTabs(m: CatalogModel): Tab[] {
   const sellingModelName = (id: Id) => m.sellingModels.find((s) => s.id === id)?.name ?? '';
   const pricebookName = (id: Id) => m.pricebooks.find((b) => b.id === id)?.name ?? '';
 
+  /*
+   * Selling models and price books can point at a record that already exists in the org
+   * rather than being created. Such a record is left out of its own tab, and its children
+   * reference it by Id.
+   *
+   * That means two ways of resolving the same lookup, so the child tabs carry an Id column
+   * *and* the name column, with exactly one filled per row. The Id column only appears when
+   * something actually uses it — a catalog that creates everything exports exactly the
+   * workbook it did before.
+   */
+  const existingSellingModelId = (id: Id) =>
+    m.sellingModels.find((s) => s.id === id)?.existingId?.trim() ?? '';
+  const existingPricebookId = (id: Id) =>
+    m.pricebooks.find((b) => b.id === id)?.existingId?.trim() ?? '';
+
+  const anyExistingSellingModel = m.sellingModels.some((s) => s.existingId?.trim());
+  const anyExistingPricebook = m.pricebooks.some((b) => b.existingId?.trim());
+
+  /** Name column stays blank when the row resolves by Id, so the loader reads one or the other. */
+  const byName = (name: string, existing: string) => (existing ? '' : name);
+
   const bySequence = <T extends { sequence: number }>(rows: T[]) =>
     [...rows].sort((a, b) => a.sequence - b.sequence);
 
@@ -195,18 +216,23 @@ export function buildTabs(m: CatalogModel): Tab[] {
     {
       name: 'ProductSellingModel',
       columns: ['Name', 'SellingModelType', 'PricingTerm', 'PricingTermUnit', 'Status'],
-      rows: m.sellingModels.map((s) => [
-        s.name,
-        s.type,
-        s.type === 'TermDefined' ? num(s.pricingTerm) : '',
-        s.type === 'TermDefined' ? s.pricingTermUnit : '',
-        s.status,
-      ]),
+      // Models marked as already in the org are referenced, not created.
+      rows: m.sellingModels
+        .filter((s) => !s.existingId?.trim())
+        .map((s) => [
+          s.name,
+          s.type,
+          s.type === 'TermDefined' ? num(s.pricingTerm) : '',
+          s.type === 'TermDefined' ? s.pricingTermUnit : '',
+          s.status,
+        ]),
     },
     {
       name: 'Pricebook2',
       columns: ['Name', 'IsStandard', 'IsActive'],
-      rows: m.pricebooks.map((b) => [b.name, bool(b.isStandard), bool(b.isActive)]),
+      rows: m.pricebooks
+        .filter((b) => !b.existingId?.trim())
+        .map((b) => [b.name, bool(b.isStandard), bool(b.isActive)]),
     },
     {
       name: 'Product2',
@@ -254,35 +280,48 @@ export function buildTabs(m: CatalogModel): Tab[] {
       name: 'ProductSellingModelOption',
       columns: [
         'Product2:Product2:Name',
+        ...(anyExistingSellingModel ? ['ProductSellingModelId'] : []),
         'ProductSellingModel:ProductSellingModel:Name',
         'IsDefault',
         'ProrationPolicy:ProrationPolicy:Name',
       ],
-      rows: m.sellingModelOptions.map((o) => [
-        productName(o.productId),
-        sellingModelName(o.sellingModelId),
-        bool(o.isDefault),
-        o.prorationPolicy,
-      ]),
+      rows: m.sellingModelOptions.map((o) => {
+        const existing = existingSellingModelId(o.sellingModelId);
+        return [
+          productName(o.productId),
+          ...(anyExistingSellingModel ? [existing] : []),
+          byName(sellingModelName(o.sellingModelId), existing),
+          bool(o.isDefault),
+          o.prorationPolicy,
+        ];
+      }),
     },
     {
       name: 'PricebookEntry',
       columns: [
+        ...(anyExistingPricebook ? ['Pricebook2Id'] : []),
         'Pricebook2:Pricebook2:Name',
         'Product2:Product2:Name',
+        ...(anyExistingSellingModel ? ['ProductSellingModelId'] : []),
         'ProductSellingModel:ProductSellingModel:Name',
         'IsActive',
         'UnitPrice',
         'CurrencyISOCode',
       ],
-      rows: m.pricebookEntries.map((e) => [
-        pricebookName(e.pricebookId),
-        productName(e.productId),
-        sellingModelName(e.sellingModelId),
-        bool(e.isActive),
-        e.unitPrice,
-        e.currency,
-      ]),
+      rows: m.pricebookEntries.map((e) => {
+        const book = existingPricebookId(e.pricebookId);
+        const model = existingSellingModelId(e.sellingModelId);
+        return [
+          ...(anyExistingPricebook ? [book] : []),
+          byName(pricebookName(e.pricebookId), book),
+          productName(e.productId),
+          ...(anyExistingSellingModel ? [model] : []),
+          byName(sellingModelName(e.sellingModelId), model),
+          bool(e.isActive),
+          e.unitPrice,
+          e.currency,
+        ];
+      }),
     },
     {
       name: 'ProductComponentGroup',
@@ -368,12 +407,15 @@ const NOTES: Record<string, string> = {
   AttributeDefinition: 'Name is the API name and must be unique across the org.',
   ProductClassification: 'Load before Product2 — products reference it via BasedOn.',
   ProductClassificationAttr: 'Attaches attributes to a classification; every product based on it inherits them.',
-  ProductSellingModel: 'Load before Product2. Standard models may already exist — match their names exactly rather than creating duplicates.',
-  Pricebook2: 'The standard price book usually exists already; load only what is missing.',
+  ProductSellingModel:
+    'Load before Product2. Models marked as already in the org are not here — their children point at them by Id instead, so do not recreate them.',
+  Pricebook2:
+    'The standard price book usually exists already. A book marked as already in the org is not here — PricebookEntry points at it by Id instead.',
   Product2: 'Bundles are just products with Type = Bundle. RecordType must already exist in the org.',
   ProductCategoryProduct: 'Publishes products into categories. Necessary but not sufficient — pricing decides the rest.',
   ProductSellingModelOption: 'Without a row here the product has nothing to be priced against and stays invisible.',
-  PricebookEntry: 'The other half of visibility. Then refresh the decision table — see AFTER LOADING below.',
+  PricebookEntry:
+    'The other half of visibility. Where an Id column is filled, leave the matching name column blank — the loader resolves one or the other, not both. Then refresh the decision table — see AFTER LOADING below.',
   ProductComponentGroup: 'Matched to its bundle by product Name. Code must be unique — components join on it.',
   ProductRelatedComponent: 'Load last. Set either ChildProduct or ChildProductClassification, never both.',
 };

@@ -207,9 +207,18 @@ A `_ReadMe` tab carries the same order with a note per object, followed by the p
 including the decision table refresh.
 
 `RecordType`, `UnitOfMeasure` and `ProrationPolicy` are resolved against records that already exist
-in the org — the workbook references them by name but does not create them. Standard selling models
-and the standard price book usually exist too; match their names exactly rather than duplicating
-them.
+in the org — the workbook references them by name but does not create them.
+
+**Selling models and price books can be referenced by Id instead of created.** The standard price
+book and the shipped selling models already exist in every org, and matching them by name is fragile.
+In *Selling models & pricing*, set **Record** to *Already in the org* and paste the record Id: that
+record is then left out of its own tab, and `ProductSellingModelOption` / `PricebookEntry` point at
+the Id instead of resolving the name.
+
+Those two child tabs then carry an Id column **and** the name column, with exactly one filled per
+row, so a catalog can mix referenced and created records. The Id columns only appear when something
+actually uses them, so a catalog that creates everything exports exactly the workbook it did before.
+Only these two objects work this way — everything else is created by the load.
 
 ## Validation
 

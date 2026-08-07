@@ -22,6 +22,49 @@ const TERM_UNITS: readonly { value: TermUnit; label: string }[] = [
   { value: 'Years', label: 'Years' },
 ];
 
+/**
+ * Create-or-reference switch, for the two objects that usually already exist in the org.
+ * Choosing "Already in the org" keeps the record out of the workbook and makes its children
+ * point at the pasted Id instead of resolving the name.
+ */
+function SourceCells({
+  existingId,
+  onChange,
+  placeholder,
+}: {
+  existingId: string | undefined;
+  onChange: (existingId: string | undefined) => void;
+  placeholder: string;
+}) {
+  const isExisting = existingId !== undefined;
+  return (
+    <>
+      <td>
+        <select
+          value={isExisting ? 'existing' : 'new'}
+          onChange={(e) => onChange(e.target.value === 'existing' ? (existingId ?? '') : undefined)}
+        >
+          <option value="new">Create it</option>
+          <option value="existing">Already in the org</option>
+        </select>
+      </td>
+      <td>
+        {isExisting ? (
+          <input
+            type="text"
+            className="mono"
+            value={existingId}
+            placeholder={placeholder}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        ) : (
+          <span className="muted">—</span>
+        )}
+      </td>
+    </>
+  );
+}
+
 export default function PricingStep() {
   const {
     products,
@@ -94,17 +137,26 @@ export default function PricingStep() {
           </button>
         }
       >
+        <p className="hint-line">
+          Set <strong>Record</strong> to <em>Already in the org</em> and paste the record Id to reuse a
+          model that is already there. It is then left out of the workbook, and the pricing rows point
+          at that Id instead of matching on name. Type and term stay editable either way — the preview
+          uses them to bucket totals, but they are not exported for an existing record.
+        </p>
+
         {sellingModels.length === 0 ? (
           <Empty>
-            No selling models. An RCA org usually ships some already — add the ones you reference by the
-            exact name they have in the org.
+            No selling models. An RCA org usually ships some already — reference those by Id rather than
+            creating duplicates.
           </Empty>
         ) : (
           <div className="scroll-x">
             <table className="grid-table">
               <thead>
                 <tr>
-                  <th>Name</th>
+                  <th style={{ minWidth: 180 }}>Name</th>
+                  <th style={{ width: 172 }}>Record</th>
+                  <th style={{ width: 190 }}>Existing Id</th>
                   <th style={{ width: 220 }}>Type</th>
                   <th style={{ width: 90 }}>Term</th>
                   <th style={{ width: 110 }}>Term unit</th>
@@ -124,6 +176,11 @@ export default function PricingStep() {
                         onChange={(e) => update('sellingModels', sm.id, { name: e.target.value })}
                       />
                     </td>
+                    <SourceCells
+                      existingId={sm.existingId}
+                      placeholder="15 or 18-char Id"
+                      onChange={(existingId) => update('sellingModels', sm.id, { existingId })}
+                    />
                     <td>
                       <select
                         value={sm.type}
@@ -216,60 +273,75 @@ export default function PricingStep() {
           </div>
         }
       >
+        <p className="hint-line">
+          The standard price book already exists in every org, so it is usually the one to reference by
+          Id rather than create. Standard and Active still drive this app&apos;s preview; they are not
+          exported for an existing book.
+        </p>
+
         {pricebooks.length === 0 ? (
           <Empty>No price book yet. Every org has exactly one standard price book — start with that.</Empty>
         ) : (
-          <table className="grid-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th style={{ width: 90 }}>Standard</th>
-                <th style={{ width: 70 }}>Active</th>
-                <th style={{ width: 80 }}>Entries</th>
-                <th style={{ width: 50 }} />
-              </tr>
-            </thead>
-            <tbody>
-              {pricebooks.map((b) => (
-                <tr key={b.id}>
-                  <td>
-                    <input
-                      type="text"
-                      value={b.name}
-                      placeholder="Standard Price Book"
-                      onChange={(e) => update('pricebooks', b.id, { name: e.target.value })}
-                    />
-                  </td>
-                  <td className="check-cell">
-                    <Check
-                      checked={b.isStandard}
-                      onChange={(isStandard) => {
-                        if (isStandard)
-                          for (const other of pricebooks)
-                            if (other.id !== b.id && other.isStandard)
-                              update('pricebooks', other.id, { isStandard: false });
-                        update('pricebooks', b.id, { isStandard });
-                      }}
-                    />
-                  </td>
-                  <td className="check-cell">
-                    <Check
-                      checked={b.isActive}
-                      onChange={(isActive) => update('pricebooks', b.id, { isActive })}
-                    />
-                  </td>
-                  <td className="muted">
-                    {pricebookEntries.filter((e) => e.pricebookId === b.id).length}
-                  </td>
-                  <td>
-                    <button className="btn danger" onClick={() => remove('pricebooks', b.id)}>
-                      ✕
-                    </button>
-                  </td>
+          <div className="scroll-x">
+            <table className="grid-table">
+              <thead>
+                <tr>
+                  <th style={{ minWidth: 180 }}>Name</th>
+                  <th style={{ width: 172 }}>Record</th>
+                  <th style={{ width: 190 }}>Existing Id</th>
+                  <th style={{ width: 90 }}>Standard</th>
+                  <th style={{ width: 70 }}>Active</th>
+                  <th style={{ width: 80 }}>Entries</th>
+                  <th style={{ width: 50 }} />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pricebooks.map((b) => (
+                  <tr key={b.id}>
+                    <td>
+                      <input
+                        type="text"
+                        value={b.name}
+                        placeholder="Standard Price Book"
+                        onChange={(e) => update('pricebooks', b.id, { name: e.target.value })}
+                      />
+                    </td>
+                    <SourceCells
+                      existingId={b.existingId}
+                      placeholder="01s..."
+                      onChange={(existingId) => update('pricebooks', b.id, { existingId })}
+                    />
+                    <td className="check-cell">
+                      <Check
+                        checked={b.isStandard}
+                        onChange={(isStandard) => {
+                          if (isStandard)
+                            for (const other of pricebooks)
+                              if (other.id !== b.id && other.isStandard)
+                                update('pricebooks', other.id, { isStandard: false });
+                          update('pricebooks', b.id, { isStandard });
+                        }}
+                      />
+                    </td>
+                    <td className="check-cell">
+                      <Check
+                        checked={b.isActive}
+                        onChange={(isActive) => update('pricebooks', b.id, { isActive })}
+                      />
+                    </td>
+                    <td className="muted">
+                      {pricebookEntries.filter((e) => e.pricebookId === b.id).length}
+                    </td>
+                    <td>
+                      <button className="btn danger" onClick={() => remove('pricebooks', b.id)}>
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
 
