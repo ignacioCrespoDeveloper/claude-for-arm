@@ -106,6 +106,27 @@ export const SKILLS: SkillTool[] = [
   },
   {
     kind: 'skill',
+    id: 'context-mapping',
+    command: 'sf-context-mapping',
+    name: 'Context Definition mappings',
+    blurb:
+      'Answers "how do I get this field from X to Y" with the correct Context Definition path — node, attribute, the two mappings per hop — or says plainly that CD is not needed for it, or that the flow is not possible as asked.',
+    produces: 'A mapping plan with the verdict stated first',
+    triggers: [
+      '"map this field from quote line to asset"',
+      '"why does the mapped field arrive blank"',
+      '"show a custom field in the Transaction Line Editor"',
+    ],
+    bullets: [
+      'Ships the verified flow graph: quote → order → asset, which operation fires each hop, and what never flows',
+      'Three honest verdicts — a CD path, "you don\'t need CD, use a formula/Flow/report", or "not possible as asked" with the nearest alternative',
+      'Knows the silent blanks: wrong node, missing Input/Output toggle, unactivated version, standard definition edited instead of extended',
+      'QuoteLineItem → Asset worked end-to-end as the canonical two-hop example',
+    ],
+    status: 'live',
+  },
+  {
+    kind: 'skill',
     id: 'tdd',
     command: 'sf-tdd',
     name: 'TDD authoring',

@@ -190,6 +190,7 @@ finding; everything else is commentary.
 - **Existing quotes do not re-price themselves.** Say what happens to in-flight quotes and
   whether a re-price is needed.
 
-Related: `/sf-ticket-solution` when the pricing question arrived as a ticket and needs a Jira
-write-up, `/sf-data-deploy` for loading decision table rows, `/sf-tdd` when the change is
-big enough to need a design document.
+Related: `/sf-context-mapping` when the missing piece is a field that never reaches the
+context, `/sf-ticket-solution` when the pricing question arrived as a ticket and needs a
+Jira write-up, `/sf-data-deploy` for loading decision table rows, `/sf-tdd` when the change
+is big enough to need a design document.
