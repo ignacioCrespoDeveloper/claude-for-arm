@@ -198,8 +198,16 @@
   /* ------------------------------------------------- simplified configurator */
   .cfg-section { margin-bottom: 18px; }
   .cfg-section > h4 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: #444; }
-  .cfg-attr { display: flex; justify-content: space-between; gap: 14px; padding: 7px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+  .cfg-attr { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 7px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
   .cfg-attr .v { font-weight: 600; }
+  .cfg-attr select, .cfg-attr input[type='text'], .cfg-attr input[type='number'], .cfg-attr input[type='date'], .cfg-attr input[type='datetime-local'] {
+    min-width: 210px; padding: 7px 10px; border: 1px solid #c9c9c9; border-radius: 5px;
+    font-size: 14px; font-family: inherit; background: #fff; color: #181818;
+  }
+  .cfg-attr select:focus, .cfg-attr input:focus { outline: 0; border-color: #0176d3; box-shadow: 0 0 0 1px #0176d3; }
+  .cfg-attr select:disabled, .cfg-attr input:disabled { background: #f3f3f3; color: #747474; }
+  .cfg-attr input[type='checkbox'] { width: 16px; height: 16px; accent-color: #0176d3; margin: 0; }
+  .cfg-note { font-size: 12px; color: #747474; margin: 2px 0 0; }
   .cfg-group { border: 1px solid #e5e5e5; border-radius: 5px; margin-bottom: 12px; overflow: hidden; }
   .cfg-group-head { padding: 9px 14px; background: #f7f7f7; font-weight: 700; font-size: 14px; display: flex; justify-content: space-between; }
   .cfg-group-head .minmax { font-weight: 400; color: #747474; font-size: 12px; }
@@ -664,9 +672,10 @@ function openQuote() {
 }
 
 /**
- * Simplified configurator: classification attributes read-only, bundle groups with
- * selectable components and a running total. The full configurator (picklist editing,
- * min/max enforcement, nested bundles) lives in the RCA Product Builder app.
+ * Simplified configurator: classification attributes are editable (picklists render
+ * their real values), bundle groups have selectable components and a running total.
+ * Attribute choices do not reprice — attribute-based pricing runs in the org's pricing
+ * procedure. Nested bundles and rule enforcement live in the RCA Product Builder app.
  */
 function openConfigurator(productId) {
   const p = MODEL.products.find((x) => x.id === productId);
@@ -679,18 +688,41 @@ function openConfigurator(productId) {
     chosen[rc.id] = { on: rc.isComponentRequired || rc.isDefaultComponent, qty: rc.quantity || 1 };
   }
 
-  const attrRows = () => {
-    if (!p.classificationId) return '';
-    const rows = MODEL.classificationAttributes
+  const cas = !p.classificationId ? [] :
+    MODEL.classificationAttributes
       .filter((ca) => ca.classificationId === p.classificationId && !ca.isHidden)
       .sort((a, b) => a.sequence - b.sequence)
-      .map((ca) => {
-        const attr = MODEL.attributes.find((a) => a.id === ca.attributeId);
-        if (!attr) return '';
-        const v = ca.defaultValue || attr.defaultValue || '—';
-        return `<div class="cfg-attr"><span>${esc(attr.label)}${ca.isRequired ? ' *' : ''}</span><span class="v">${esc(v)}</span></div>`;
-      }).join('');
-    return rows ? `<div class="cfg-section"><h4>Attributes</h4>${rows}</div>` : '';
+      .map((ca) => ({ ca, attr: MODEL.attributes.find((a) => a.id === ca.attributeId) }))
+      .filter((x) => x.attr);
+  const attrValues = {};
+  for (const { ca, attr } of cas) attrValues[ca.id] = ca.defaultValue || attr.defaultValue || '';
+
+  const attrControl = (ca, attr) => {
+    const v = attrValues[ca.id];
+    const dis = ca.isReadOnly ? 'disabled' : '';
+    if (attr.dataType === 'Picklist') {
+      const opts = MODEL.picklistValues
+        .filter((pv) => pv.picklistId === attr.picklistId && pv.status !== 'Obsolete')
+        .sort((a, b) => a.sequence - b.sequence);
+      const blank = !ca.isRequired || !v ? `<option value="" ${v === '' ? 'selected' : ''}>--None--</option>` : '';
+      return `<select data-attr="${esc(ca.id)}" ${dis}>${blank}${opts.map((pv) => {
+        const val = pv.value || pv.name;
+        return `<option value="${esc(val)}" ${val === v ? 'selected' : ''}>${esc(pv.displayValue || pv.name)}</option>`;
+      }).join('')}</select>`;
+    }
+    if (attr.dataType === 'Checkbox')
+      return `<input type="checkbox" data-attr="${esc(ca.id)}" ${v === 'true' ? 'checked' : ''} ${dis}>`;
+    const type = { Number: 'number', Currency: 'number', Percent: 'number', Date: 'date', DateTime: 'datetime-local' }[attr.dataType] || 'text';
+    return `<input type="${type}" data-attr="${esc(ca.id)}" value="${esc(v)}" ${dis}>`;
+  };
+
+  const attrRows = () => {
+    if (cas.length === 0) return '';
+    const rows = cas.map(({ ca, attr }) =>
+      `<div class="cfg-attr"><span>${esc(attr.label)}${ca.isRequired ? ' *' : ''}</span>${attrControl(ca, attr)}</div>`
+    ).join('');
+    return `<div class="cfg-section"><h4>Attributes</h4>${rows}
+      <p class="cfg-note">Selections here do not change the price — attribute-based pricing runs in the org's pricing procedure.</p></div>`;
   };
 
   const compPrice = (rc) => {
@@ -750,6 +782,10 @@ function openConfigurator(productId) {
 
     document.getElementById('cfg-cancel').onclick = closeModal;
     document.getElementById('cfg-add').onclick = () => { addLines([p]); closeModal(); render(); };
+    document.querySelectorAll('[data-attr]').forEach((el) => el.addEventListener('change', (e) => {
+      const t = e.currentTarget;
+      attrValues[t.dataset.attr] = t.type === 'checkbox' ? String(t.checked) : t.value;
+    }));
     document.querySelectorAll('[data-c]').forEach((el) => el.addEventListener('change', (e) => {
       chosen[e.currentTarget.dataset.c].on = e.currentTarget.checked; draw();
     }));
