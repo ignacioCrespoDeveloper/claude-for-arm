@@ -36,6 +36,7 @@ page has a second tab for its template.
 | [`/sf-tdd`](.claude/skills/sf-tdd/SKILL.md) | Technical Design Document against a fixed template — data model, components, integrations, security, limits, test and deployment strategy | `docs/tdd/<TICKET>-<slug>.md` with mermaid diagrams |
 | [`/sf-flow-design`](.claude/skills/sf-flow-design/SKILL.md) | Flow type, trigger, entry criteria, elements with fault paths, test cases — optionally the metadata XML | A flow spec, optionally a ready-to-validate `.flow-meta.xml` |
 | [`/sf-data-deploy`](.claude/skills/sf-data-deploy/SKILL.md) | Load and migration planning — object order, external IDs, `sf` CLI commands, per-step validation, rollback | A load plan with copy-pasteable commands |
+| [`/sf-catalog-preview`](.claude/skills/sf-catalog-preview/SKILL.md) | **RCA-specific.** Excel of product data → how it will look in Browse Catalog (same design as the Product Builder preview) plus every record needed to make the products visible, synthesized where the spreadsheet is silent | A standalone `preview.html` and load-ready CSVs in dependency order |
 
 You can type the command, or just describe the task — each skill's `description` frontmatter is
 written so Claude reaches for the right one unprompted.

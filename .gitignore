@@ -9,3 +9,6 @@ dist/
 # with `npm run dump`; nothing here is committed or bundled into the app.
 xlsx/*
 !xlsx/.gitkeep
+
+# Output of /sf-catalog-preview runs — same rule: generated from client catalog data.
+catalog-preview/

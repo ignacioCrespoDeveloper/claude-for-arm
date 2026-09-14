@@ -16,6 +16,8 @@ import tdd from '../../.claude/skills/sf-tdd/SKILL.md?raw';
 import tddTemplate from '../../.claude/skills/sf-tdd/references/tdd-template.md?raw';
 import flowDesign from '../../.claude/skills/sf-flow-design/SKILL.md?raw';
 import dataDeploy from '../../.claude/skills/sf-data-deploy/SKILL.md?raw';
+import catalogPreview from '../../.claude/skills/sf-catalog-preview/SKILL.md?raw';
+import catalogMapping from '../../.claude/skills/sf-catalog-preview/references/data-mapping.md?raw';
 
 export type SkillDoc = {
   /** The raw SKILL.md, frontmatter included. */
@@ -87,6 +89,17 @@ export const SKILL_DOCS: Record<string, SkillDoc> = {
   'sf-data-deploy': {
     source: dataDeploy,
     path: '.claude/skills/sf-data-deploy/SKILL.md',
+  },
+  'sf-catalog-preview': {
+    source: catalogPreview,
+    path: '.claude/skills/sf-catalog-preview/SKILL.md',
+    references: [
+      {
+        name: 'Data mapping',
+        path: '.claude/skills/sf-catalog-preview/references/data-mapping.md',
+        source: catalogMapping,
+      },
+    ],
   },
 };
 

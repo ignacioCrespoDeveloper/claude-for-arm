@@ -1,0 +1,765 @@
+<!--
+  Browse Catalog preview — standalone replica of Salesforce Revenue Cloud's
+  "Browse Products" modal, ported from the RCA Product Builder's preview.
+
+  To use: replace the "MODEL_JSON" placeholder (double underscores on both sides, inside
+  the <script type="application/json"> block below — it is the only place the token
+  appears) with the catalog model (see references/data-mapping.md for the shape).
+  Everything else stays untouched — the design mirrors the org on purpose.
+-->
+<title>Catalog Preview</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 26px 18px 60px;
+    background: #f0f1f2;
+    color: #181818;
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  .page-head { margin: 0 0 14px; }
+  .page-head h1 { margin: 0 0 4px; font-size: 20px; letter-spacing: -0.01em; }
+  .page-head p { margin: 0; color: #5c5c5c; font-size: 13px; }
+  .catalog-tabs { display: flex; gap: 8px; margin: 14px 0; flex-wrap: wrap; }
+  .catalog-tabs button {
+    border: 1px solid #c9c9c9; background: #fff; color: #181818;
+    padding: 7px 14px; border-radius: 5px; cursor: pointer; font-size: 13px;
+  }
+  .catalog-tabs button.on { background: #0176d3; border-color: #0176d3; color: #fff; }
+
+  /* ------------------------------------------------------- browse catalog */
+  .sf-shell {
+    background: #fff;
+    border: 1px solid #c9c9c9;
+    border-radius: 4px;
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.12);
+    color: #181818;
+    overflow: hidden;
+  }
+  .sf-topbar { display: flex; align-items: center; padding: 18px 22px; border-bottom: 1px solid #e5e5e5; }
+  .sf-topbar h2 { margin: 0; font-size: 19px; font-weight: 700; flex: 1; letter-spacing: -0.01em; }
+  .sf-quotelink {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: none; border: 0; color: #0176d3; font-size: 15px; cursor: pointer; padding: 4px;
+    font-family: inherit;
+  }
+  .sf-quotelink:hover { text-decoration: underline; }
+
+  .sf-subbar { display: flex; align-items: center; gap: 12px; padding: 14px 22px; }
+  .sf-appicon {
+    width: 30px; height: 30px; border-radius: 5px;
+    background: #2e844a; color: #fff;
+    display: grid; place-items: center; flex: none;
+  }
+  .sf-subbar h3 { margin: 0; font-size: 16px; font-weight: 700; flex: 1; }
+  .sf-search {
+    display: flex; align-items: center; gap: 9px;
+    border: 1px solid #c9c9c9; border-radius: 5px;
+    padding: 7px 13px; width: 310px; color: #747474;
+  }
+  .sf-search:focus-within { border-color: #0176d3; box-shadow: 0 0 0 1px #0176d3; }
+  .sf-search input { border: 0; outline: 0; flex: 1; font-size: 14px; background: transparent; font-family: inherit; }
+
+  .sf-body { display: flex; align-items: stretch; border-top: 1px solid #e5e5e5; min-height: 420px; }
+  .sf-cats { width: 232px; flex: none; border-right: 1px solid #e5e5e5; padding: 14px 0; }
+  .sf-cats-head {
+    display: flex; align-items: center; gap: 9px;
+    padding: 0 16px 12px; font-size: 15px; font-weight: 700; color: #181818;
+  }
+  .sf-cats-head svg { color: #5867e8; }
+  .sf-cat {
+    width: 100%; display: flex; align-items: center; gap: 8px;
+    padding: 9px 16px 9px 22px;
+    background: none; border: 0; border-left: 3px solid transparent;
+    text-align: left; font-size: 14px; color: #181818; cursor: pointer; font-family: inherit;
+  }
+  .sf-cat:hover { background: #f3f3f3; }
+  .sf-cat.active { background: #f0f1f3; font-weight: 700; }
+  .sf-cat.child { padding-left: 38px; font-size: 13px; }
+
+  .sf-list { flex: 1; min-width: 0; padding: 16px 20px 20px; }
+  .sf-list-head { display: flex; align-items: center; gap: 12px; }
+  .sf-selectall { display: flex; align-items: center; gap: 11px; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .sf-selectall input { width: 17px; height: 17px; accent-color: #0176d3; margin: 0; }
+  .sf-head-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .sf-btn-outline {
+    border: 1px solid #c9c9c9; background: #fff; color: #0176d3;
+    padding: 7px 15px; border-radius: 5px; cursor: pointer; font-size: 14px; white-space: nowrap; font-family: inherit;
+  }
+  .sf-btn-outline:hover:not(:disabled) { background: #f3f3f3; }
+  .sf-btn-outline:disabled { color: #b0b0b0; cursor: not-allowed; }
+  .sf-icon-btn {
+    width: 36px; height: 36px; flex: none;
+    border: 1px solid #c9c9c9; background: #fff; border-radius: 5px;
+    display: grid; place-items: center; cursor: pointer; color: #444;
+  }
+  .sf-icon-btn:hover:not(:disabled) { background: #f3f3f3; }
+  .sf-icon-btn:disabled { color: #c9c9c9; cursor: not-allowed; }
+  .sf-icon-btn.on { border-color: #0176d3; color: #0176d3; background: #eaf4fd; }
+
+  .sf-menu-wrap { position: relative; }
+  .sf-menu {
+    position: absolute; right: 0; top: 42px; z-index: 20;
+    background: #fff; border: 1px solid #c9c9c9; border-radius: 5px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18); min-width: 190px; padding: 4px;
+  }
+  .sf-menu-item {
+    display: flex; align-items: center; gap: 9px; width: 100%;
+    padding: 8px 11px; background: none; border: 0; border-radius: 4px;
+    text-align: left; font-size: 14px; cursor: pointer; color: #181818; font-family: inherit;
+  }
+  .sf-menu-item:hover { background: #f3f3f3; }
+  .sf-menu-item.on { font-weight: 700; color: #0176d3; }
+  .sf-menu-item input { accent-color: #0176d3; }
+
+  .sf-count { font-size: 14px; color: #444; margin: 10px 0 16px; }
+  .sf-rows { display: grid; gap: 14px; }
+  .sf-empty { padding: 40px 0; text-align: center; color: #747474; }
+  .sf-row {
+    display: flex; align-items: center; gap: 18px;
+    border: 1px solid #e5e5e5; border-radius: 5px; padding: 16px 18px;
+  }
+  .sf-row > input[type='checkbox'] { width: 17px; height: 17px; accent-color: #0176d3; margin: 0; flex: none; }
+  .sf-thumb {
+    width: 96px; height: 96px; flex: none; border-radius: 4px;
+    background: #f5f8fc; display: grid; place-items: center; color: #b7bcc4;
+  }
+  .sf-info { flex: 1; min-width: 0; display: grid; gap: 5px; }
+  .sf-pname { font-size: 15px; }
+  .sf-price { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; }
+  .sf-price svg { color: #747474; }
+  .sf-noprice { color: #b0b0b0; font-weight: 400; font-size: 15px; }
+  .sf-attrs { font-size: 13px; color: #747474; }
+
+  .sf-qty {
+    display: flex; align-items: center; flex: none;
+    border: 1px solid #c9c9c9; border-radius: 5px; overflow: hidden; height: 38px;
+  }
+  .sf-qty button { width: 38px; height: 100%; border: 0; background: #fff; display: grid; place-items: center; cursor: pointer; color: #444; }
+  .sf-qty button:hover { background: #f3f3f3; }
+  .sf-qty input { width: 52px; height: 100%; border: 0; outline: 0; text-align: center; font-size: 15px; -moz-appearance: textfield; font-family: inherit; }
+  .sf-qty input::-webkit-outer-spin-button,
+  .sf-qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  .sf-add {
+    border: 1px solid #0176d3; background: #fff; color: #0176d3;
+    padding: 8px 22px; border-radius: 5px; cursor: pointer; font-size: 14px; flex: none; font-family: inherit;
+  }
+  .sf-add:hover { background: #eaf4fd; }
+
+  .sf-footer { display: flex; justify-content: flex-end; padding: 14px 22px; background: #f3f3f3; border-top: 1px solid #e5e5e5; }
+  .sf-save {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid #c9c9c9; background: #fff; color: #0176d3;
+    padding: 8px 20px; border-radius: 5px; cursor: pointer; font-size: 14px; font-family: inherit;
+  }
+  .sf-save:disabled { color: #b0b0b0; background: #f3f3f3; cursor: not-allowed; }
+  .sf-save:hover:not(:disabled) { background: #eaf4fd; }
+
+  /* ------------------------------------------------- invisible-products card */
+  .card { background: #fff; border: 1px solid #c9c9c9; border-radius: 4px; margin-top: 18px; overflow: hidden; }
+  .card h3 { margin: 0; padding: 14px 18px; font-size: 15px; border-bottom: 1px solid #e5e5e5; }
+  .card h3 .sub { font-weight: 400; color: #747474; font-size: 13px; margin-left: 8px; }
+  .grid-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .grid-table th {
+    text-align: left; padding: 9px 18px; background: #f7f7f7; color: #444;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e5e5e5;
+  }
+  .grid-table td { padding: 10px 18px; border-bottom: 1px solid #efefef; vertical-align: top; }
+  .grid-table tr:last-child td { border-bottom: 0; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+  .badge.err {
+    display: inline-block; background: #fdeded; color: #ba0517; border: 1px solid #f5c6c6;
+    border-radius: 4px; padding: 2px 8px; font-size: 12px; margin: 0 6px 4px 0;
+  }
+
+  /* -------------------------------------------------------------- modals */
+  .modal-backdrop {
+    position: fixed; inset: 0; z-index: 60;
+    background: rgba(70, 70, 70, 0.55);
+    display: grid; place-items: center; padding: 22px;
+  }
+  .modal {
+    background: #fff; color: #181818; width: min(760px, 100%); max-height: 92vh;
+    border-radius: 4px; box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .modal.wide { width: min(980px, 100%); }
+  .modal-head { display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 1px solid #e5e5e5; }
+  .modal-head h2 { margin: 0; font-size: 18px; font-weight: 700; flex: 1; letter-spacing: -0.01em; }
+  .modal-x { border: 0; background: none; font-size: 20px; cursor: pointer; color: #444; line-height: 1; padding: 4px 8px; }
+  .modal-body { padding: 18px 20px; overflow: auto; }
+  .modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid #e5e5e5; background: #f7f7f7; }
+  .muted { color: #747474; }
+
+  /* ------------------------------------------------- simplified configurator */
+  .cfg-section { margin-bottom: 18px; }
+  .cfg-section > h4 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: #444; }
+  .cfg-attr { display: flex; justify-content: space-between; gap: 14px; padding: 7px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+  .cfg-attr .v { font-weight: 600; }
+  .cfg-group { border: 1px solid #e5e5e5; border-radius: 5px; margin-bottom: 12px; overflow: hidden; }
+  .cfg-group-head { padding: 9px 14px; background: #f7f7f7; font-weight: 700; font-size: 14px; display: flex; justify-content: space-between; }
+  .cfg-group-head .minmax { font-weight: 400; color: #747474; font-size: 12px; }
+  .cfg-comp { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid #efefef; font-size: 14px; }
+  .cfg-comp input[type='checkbox'] { width: 16px; height: 16px; accent-color: #0176d3; margin: 0; }
+  .cfg-comp .nm { flex: 1; }
+  .cfg-comp .pr { color: #444; }
+  .cfg-comp .inc { color: #2e844a; font-size: 12px; }
+  .cfg-comp input[type='number'] {
+    width: 58px; padding: 5px 6px; border: 1px solid #c9c9c9; border-radius: 4px;
+    text-align: center; font-size: 13px; font-family: inherit;
+  }
+  .cfg-total { display: flex; justify-content: flex-end; gap: 10px; font-size: 16px; font-weight: 700; padding-top: 6px; }
+
+  @media (max-width: 760px) {
+    .sf-body { flex-direction: column; }
+    .sf-cats { width: 100%; border-right: 0; border-bottom: 1px solid #e5e5e5; }
+    .sf-search { width: 100%; }
+    .sf-subbar { flex-wrap: wrap; }
+  }
+</style>
+
+<div class="wrap">
+  <div class="page-head">
+    <h1>Browse Catalog preview</h1>
+    <p>
+      Rendered strictly from the generated model — a product missing here will be missing in the
+      org too. Prices come from the PricebookEntry for each product's default selling model.
+    </p>
+  </div>
+  <div id="app"></div>
+</div>
+
+<script id="catalog-model" type="application/json">__MODEL_JSON__</script>
+
+<script>
+'use strict';
+
+let MODEL;
+try {
+  MODEL = JSON.parse(document.getElementById('catalog-model').textContent);
+} catch (e) {
+  document.getElementById('app').innerHTML =
+    '<div class="card"><h3>No model loaded</h3><div style="padding:18px">Replace <code>__MODEL' +
+    '_JSON__</code> in this file with the catalog model JSON (see the sf-catalog-preview skill).</div></div>';
+  throw e;
+}
+for (const k of ['catalogs','categories','picklists','picklistValues','attributeCategories','attributes',
+  'classifications','classificationAttributes','products','sellingModels','sellingModelOptions',
+  'pricebooks','pricebookEntries','componentGroups','relatedComponents']) MODEL[k] = MODEL[k] || [];
+
+/* ------------------------------------------------------------------ icons */
+const svg = (inner, size = 16, extra = '') =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ${extra}>${inner}</svg>`;
+const I = {
+  tag: (s = 16) => svg('<path d="M20.6 13.4 12 22l-9-9V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.3" fill="currentColor" stroke="none"/>', s),
+  search: svg('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'),
+  categories: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="7" cy="7" r="2.6"/><circle cx="17" cy="7" r="2.6"/><circle cx="7" cy="17" r="2.6"/><circle cx="17" cy="17" r="2.6"/></svg>',
+  catalog: svg('<path d="M4 4h7v16H4z"/><path d="M13 4h7v16h-7z"/><path d="M15.5 8.5h2M15.5 12h2"/>', 18),
+  minus: svg('<circle cx="12" cy="12" r="9"/><path d="M8.5 12h7"/>', 18),
+  plus: svg('<circle cx="12" cy="12" r="9"/><path d="M12 8.5v7M8.5 12h7"/>', 18),
+  gear: svg('<circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/>', 17),
+  filter: svg('<path d="M3 5h18l-7 8v6l-4 2v-8Z"/>', 17),
+  sort: svg('<path d="M7 4v16M7 20l-3-3M7 20l3-3"/><path d="M17 20V4M17 4l-3 3M17 4l3 3"/>', 17),
+  check: svg('<path d="m4.5 12.5 5 5 10-11"/>'),
+  image: svg('<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="m3.5 17.5 5-5 4.5 4.5 3-2.5 4.5 4"/>', 34, 'stroke-width="1.6"'),
+};
+
+/* -------------------------------------------------------------- visibility */
+// Ported from the Product Builder's visibility.ts — the preview and the org agree
+// because both apply the same five conditions.
+const BLOCK_LABEL = {
+  inactive: 'Product is not active',
+  technical: 'Technical products are not browsable',
+  'sold-only-with-others': 'Sold only with other products, so it is hidden on its own',
+  'no-category': 'Not published to any category in this catalog',
+  'no-selling-model': 'No ProductSellingModelOption, so it has nothing to be priced against',
+  'no-price': 'No active PricebookEntry in this price book for its selling model',
+};
+
+const defaultSellingModelId = (productId) => {
+  const options = MODEL.sellingModelOptions.filter((o) => o.productId === productId);
+  return (options.find((o) => o.isDefault) || options[0] || {}).sellingModelId || null;
+};
+
+const priceOf = (productId, pricebookId) => {
+  if (!pricebookId) return null;
+  const smId = defaultSellingModelId(productId);
+  return (
+    MODEL.pricebookEntries.find(
+      (e) => e.productId === productId && e.pricebookId === pricebookId && e.isActive &&
+        (smId === null || e.sellingModelId === smId),
+    ) || null
+  );
+};
+
+function blockers(product, catalogId, pricebookId) {
+  const out = [];
+  if (!product.isActive) out.push('inactive');
+  if (product.recordType === 'Technical') out.push('technical');
+  if (product.isSoldOnlyWithOtherProds) out.push('sold-only-with-others');
+
+  const inCatalog = (product.categoryIds || []).some(
+    (cid) => (MODEL.categories.find((c) => c.id === cid) || {}).catalogId === catalogId,
+  );
+  if (!inCatalog) out.push('no-category');
+
+  const options = MODEL.sellingModelOptions.filter((o) => o.productId === product.id);
+  if (options.length === 0) out.push('no-selling-model');
+  else {
+    const hasEntry = MODEL.pricebookEntries.some(
+      (e) => e.productId === product.id && e.pricebookId === pricebookId && e.isActive &&
+        options.some((o) => o.sellingModelId === e.sellingModelId),
+    );
+    if (!hasEntry) out.push('no-price');
+  }
+  return out;
+}
+
+const isMisconfigured = (reasons) =>
+  reasons.length > 0 &&
+  !reasons.includes('technical') && !reasons.includes('sold-only-with-others') &&
+  !reasons.includes('inactive') && !reasons.includes('no-category');
+
+/* ------------------------------------------------------------------- state */
+const state = {
+  catalogId: (MODEL.catalogs[0] || {}).id || null,
+  categoryId: null,
+  search: '',
+  sort: 'name-asc',
+  bundlesOnly: false,
+  openMenu: null,
+  selected: new Set(),
+  quantities: {},
+  lines: [],
+};
+
+const SORTS = [
+  ['name-asc', 'Name A → Z'],
+  ['name-desc', 'Name Z → A'],
+  ['price-asc', 'Price low → high'],
+  ['price-desc', 'Price high → low'],
+];
+
+const esc = (s) => String(s == null ? '' : s)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+const catalog = () => MODEL.catalogs.find((c) => c.id === state.catalogId) || MODEL.catalogs[0] || null;
+const pricebook = () => MODEL.pricebooks.find((b) => b.isStandard) || MODEL.pricebooks[0] || null;
+const qtyOf = (id) => state.quantities[id] || 1;
+
+const browsable = () =>
+  MODEL.products.filter((p) => blockers(p, (catalog() || {}).id || null, (pricebook() || {}).id || null).length === 0);
+
+function shownProducts() {
+  const q = state.search.trim().toLowerCase();
+  const pb = (pricebook() || {}).id || null;
+  const rows = browsable().filter((p) => {
+    if (state.categoryId && !(p.categoryIds || []).includes(state.categoryId)) return false;
+    if (state.bundlesOnly && p.type !== 'Bundle') return false;
+    if (q && !p.name.toLowerCase().includes(q) && !(p.productCode || '').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const price = (p) => (priceOf(p.id, pb) || {}).unitPrice || 0;
+  return rows.sort((a, b) => {
+    switch (state.sort) {
+      case 'name-desc': return b.name.localeCompare(a.name);
+      case 'price-asc': return price(a) - price(b);
+      case 'price-desc': return price(b) - price(a);
+      default: return a.name.localeCompare(b.name);
+    }
+  });
+}
+
+const configurable = (p) =>
+  p.configureDuringSale === 'Allowed' &&
+  (p.type === 'Bundle' || MODEL.classificationAttributes.some((ca) => ca.classificationId === p.classificationId));
+
+/** The one-line attribute recap Salesforce prints under the price. */
+function attributeSummary(p) {
+  if (!p.classificationId) return '';
+  const parts = MODEL.classificationAttributes
+    .filter((ca) => ca.classificationId === p.classificationId && !ca.isHidden)
+    .sort((a, b) => a.sequence - b.sequence)
+    .map((ca) => {
+      const attr = MODEL.attributes.find((a) => a.id === ca.attributeId);
+      if (!attr) return null;
+      const value = ca.defaultValue || attr.defaultValue;
+      if (!value) return null;
+      if (attr.dataType === 'Checkbox') return value === 'true' ? attr.label : null;
+      return value + ' ' + attr.label;
+    })
+    .filter(Boolean);
+  return parts.length ? '<div class="sf-attrs">' + esc(parts.join(' , ')) + '</div>' : '';
+}
+
+/* ------------------------------------------------------------------ render */
+const app = document.getElementById('app');
+
+function render() {
+  const cat = catalog();
+  if (!cat) {
+    app.innerHTML = '<div class="card"><h3>Browse catalog</h3><div class="sf-empty">' +
+      'The model has no catalog — nothing to browse.</div></div>';
+    return;
+  }
+  const pb = pricebook();
+  const shown = shownProducts();
+  const own = MODEL.categories
+    .filter((c) => c.catalogId === cat.id && c.showInMenu)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const tree = own.filter((c) => !c.parentId)
+    .map((root) => ({ root, children: own.filter((c) => c.parentId === root.id) }));
+  const allSelected = shown.length > 0 && shown.every((p) => state.selected.has(p.id));
+  const invisible = MODEL.products
+    .map((p) => ({ p, reasons: blockers(p, cat.id, (pb || {}).id || null) }))
+    .filter((x) => isMisconfigured(x.reasons));
+
+  const tabs = MODEL.catalogs.length > 1
+    ? '<div class="catalog-tabs">' + MODEL.catalogs.map((c) =>
+        `<button data-cat="${esc(c.id)}" class="${c.id === cat.id ? 'on' : ''}">${esc(c.name || 'Untitled catalog')}</button>`
+      ).join('') + '</div>'
+    : '';
+
+  const rows = shown.length === 0
+    ? '<div class="sf-empty">' + (browsable().length === 0
+        ? 'No products are published to this catalog yet.'
+        : 'Nothing matches the current filter.') + '</div>'
+    : shown.map((p) => {
+        const entry = priceOf(p.id, (pb || {}).id || null);
+        const price = entry
+          ? esc(entry.currency) + ' ' + esc(entry.unitPrice)
+          : '<span class="sf-noprice">No price set</span>';
+        return `
+        <article class="sf-row">
+          <input type="checkbox" data-toggle="${esc(p.id)}" ${state.selected.has(p.id) ? 'checked' : ''}>
+          <div class="sf-thumb">${I.image}</div>
+          <div class="sf-info">
+            <div class="sf-pname">${esc(p.name || 'Untitled product')}</div>
+            <div class="sf-price">${price} ${I.tag(14)}</div>
+            ${attributeSummary(p)}
+          </div>
+          <div class="sf-qty">
+            <button data-qty="${esc(p.id)}" data-d="-1" aria-label="Decrease">${I.minus}</button>
+            <input type="number" min="1" value="${qtyOf(p.id)}" data-qtyinput="${esc(p.id)}">
+            <button data-qty="${esc(p.id)}" data-d="1" aria-label="Increase">${I.plus}</button>
+          </div>
+          <button class="sf-icon-btn" data-config="${esc(p.id)}" ${configurable(p) ? '' : 'disabled'}
+            title="${configurable(p) ? 'Configure' : 'Nothing to configure'}">${I.gear}</button>
+          <button class="sf-add" data-add="${esc(p.id)}">Add</button>
+        </article>`;
+      }).join('');
+
+  const invisiblePanel = invisible.length === 0 ? '' : `
+    <div class="card">
+      <h3>Published but not visible
+        <span class="sub">${invisible.length} product${invisible.length === 1 ? '' : 's'} would load cleanly and still never appear</span>
+      </h3>
+      <table class="grid-table">
+        <thead><tr><th>Product</th><th style="width:120px">Code</th><th>Why it is missing</th></tr></thead>
+        <tbody>${invisible.map(({ p, reasons }) => `
+          <tr>
+            <td>${esc(p.name || 'Untitled')}</td>
+            <td class="mono">${esc(p.productCode)}</td>
+            <td>${reasons.map((r) => '<span class="badge err">' + BLOCK_LABEL[r] + '</span>').join('')}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+
+  app.innerHTML = `
+    ${tabs}
+    <div class="sf-shell">
+      <header class="sf-topbar">
+        <h2>Catalog: <strong>${esc(cat.name || 'Untitled catalog')}</strong></h2>
+        <button class="sf-quotelink" data-open="quote">${I.tag()} New Quote Line Items (${state.lines.length})</button>
+      </header>
+      <div class="sf-subbar">
+        <span class="sf-appicon">${I.catalog}</span>
+        <h3>Browse Products</h3>
+        <div class="sf-search">${I.search}<input type="text" id="search" placeholder="Search for products" value="${esc(state.search)}"></div>
+      </div>
+      <div class="sf-body">
+        <aside class="sf-cats">
+          <div class="sf-cats-head">${I.categories} Categories</div>
+          <button class="sf-cat ${state.categoryId === null ? 'active' : ''}" data-catg="">All Products</button>
+          ${tree.map(({ root, children }) => `
+            <button class="sf-cat ${state.categoryId === root.id ? 'active' : ''}" data-catg="${esc(root.id)}">${esc(root.name || 'Untitled')}</button>
+            ${children.map((ch) =>
+              `<button class="sf-cat child ${state.categoryId === ch.id ? 'active' : ''}" data-catg="${esc(ch.id)}">${esc(ch.name || 'Untitled')}</button>`
+            ).join('')}`).join('')}
+        </aside>
+        <section class="sf-list">
+          <div class="sf-list-head">
+            <label class="sf-selectall">
+              <input type="checkbox" id="selectall" ${allSelected ? 'checked' : ''}>
+              <span>${esc(state.categoryId ? (MODEL.categories.find((c) => c.id === state.categoryId) || {}).name : 'All Products')}</span>
+            </label>
+            <div class="sf-head-actions">
+              <button class="sf-btn-outline" id="addsel" ${state.selected.size === 0 ? 'disabled' : ''}>Add Selection to Quote</button>
+              <div class="sf-menu-wrap">
+                <button class="sf-icon-btn ${state.bundlesOnly ? 'on' : ''}" title="Filter" data-menu="filter">${I.filter}</button>
+                ${state.openMenu === 'filter' ? `
+                  <div class="sf-menu" data-stay>
+                    <label class="sf-menu-item"><input type="checkbox" id="bundlesonly" ${state.bundlesOnly ? 'checked' : ''}> Bundles only</label>
+                  </div>` : ''}
+              </div>
+              <div class="sf-menu-wrap">
+                <button class="sf-icon-btn" title="Sort" data-menu="sort">${I.sort}</button>
+                ${state.openMenu === 'sort' ? `
+                  <div class="sf-menu" data-stay>
+                    ${SORTS.map(([k, label]) =>
+                      `<button class="sf-menu-item ${k === state.sort ? 'on' : ''}" data-sort="${k}">${label}</button>`).join('')}
+                  </div>` : ''}
+              </div>
+            </div>
+          </div>
+          <div class="sf-count">${state.selected.size} Product(s) Selected</div>
+          <div class="sf-rows">${rows}</div>
+        </section>
+      </div>
+      <footer class="sf-footer">
+        <button class="sf-save" data-open="quote" ${state.lines.length === 0 ? 'disabled' : ''}>${I.check} Save Quote</button>
+      </footer>
+    </div>
+    ${invisiblePanel}
+    <div id="modal-root"></div>`;
+
+  wire();
+  const indet = document.getElementById('selectall');
+  if (indet) indet.indeterminate = !allSelected && shown.some((p) => state.selected.has(p.id));
+}
+
+function addLines(products) {
+  for (const p of products) state.lines.push({ key: p.id + '-' + state.lines.length, productId: p.id, quantity: qtyOf(p.id) });
+}
+
+function wire() {
+  const on = (sel, ev, fn) => document.querySelectorAll(sel).forEach((el) => el.addEventListener(ev, fn));
+
+  on('[data-cat]', 'click', (e) => {
+    state.catalogId = e.currentTarget.dataset.cat;
+    state.categoryId = null;
+    state.selected = new Set();
+    render();
+  });
+  on('[data-catg]', 'click', (e) => { state.categoryId = e.currentTarget.dataset.catg || null; render(); });
+
+  const search = document.getElementById('search');
+  if (search) search.addEventListener('input', (e) => {
+    state.search = e.target.value;
+    const pos = e.target.selectionStart;
+    render();
+    const again = document.getElementById('search');
+    again.focus();
+    again.setSelectionRange(pos, pos);
+  });
+
+  on('[data-menu]', 'click', (e) => {
+    e.stopPropagation();
+    const which = e.currentTarget.dataset.menu;
+    state.openMenu = state.openMenu === which ? null : which;
+    render();
+  });
+  on('[data-stay]', 'click', (e) => e.stopPropagation());
+  on('[data-sort]', 'click', (e) => { state.sort = e.currentTarget.dataset.sort; state.openMenu = null; render(); });
+  const bo = document.getElementById('bundlesonly');
+  if (bo) bo.addEventListener('change', (e) => { state.bundlesOnly = e.target.checked; render(); });
+
+  on('[data-toggle]', 'change', (e) => {
+    const id = e.currentTarget.dataset.toggle;
+    state.selected.has(id) ? state.selected.delete(id) : state.selected.add(id);
+    render();
+  });
+  const selectall = document.getElementById('selectall');
+  if (selectall) selectall.addEventListener('change', () => {
+    const shown = shownProducts();
+    const all = shown.length > 0 && shown.every((p) => state.selected.has(p.id));
+    state.selected = all ? new Set() : new Set(shown.map((p) => p.id));
+    render();
+  });
+
+  on('[data-qty]', 'click', (e) => {
+    const id = e.currentTarget.dataset.qty;
+    state.quantities[id] = Math.max(1, qtyOf(id) + Number(e.currentTarget.dataset.d));
+    render();
+  });
+  on('[data-qtyinput]', 'change', (e) => {
+    state.quantities[e.currentTarget.dataset.qtyinput] = Math.max(1, Number(e.currentTarget.value) || 1);
+    render();
+  });
+
+  on('[data-add]', 'click', (e) => {
+    addLines([MODEL.products.find((p) => p.id === e.currentTarget.dataset.add)]);
+    render();
+  });
+  const addsel = document.getElementById('addsel');
+  if (addsel) addsel.addEventListener('click', () => {
+    addLines(shownProducts().filter((p) => state.selected.has(p.id)));
+    state.selected = new Set();
+    render();
+  });
+
+  on('[data-open="quote"]', 'click', () => openQuote());
+  on('[data-config]', 'click', (e) => openConfigurator(e.currentTarget.dataset.config));
+
+  document.body.onclick = (e) => {
+    if (state.openMenu && !e.target.closest('.sf-menu-wrap')) { state.openMenu = null; render(); }
+  };
+}
+
+/* ------------------------------------------------------------------ modals */
+const modalRoot = () => document.getElementById('modal-root');
+
+function closeModal() { modalRoot().innerHTML = ''; }
+
+function modal(title, bodyHtml, footHtml, wide) {
+  modalRoot().innerHTML = `
+    <div class="modal-backdrop" id="backdrop">
+      <div class="modal ${wide ? 'wide' : ''}">
+        <div class="modal-head"><h2>${esc(title)}</h2><button class="modal-x" id="modal-close">×</button></div>
+        <div class="modal-body">${bodyHtml}</div>
+        <div class="modal-foot">${footHtml}</div>
+      </div>
+    </div>`;
+  document.getElementById('modal-close').onclick = closeModal;
+  document.getElementById('backdrop').onclick = (e) => { if (e.target.id === 'backdrop') closeModal(); };
+}
+
+function openQuote() {
+  const pb = (pricebook() || {});
+  const body = state.lines.length === 0
+    ? '<p class="muted">Nothing added yet.</p>'
+    : `<table class="grid-table">
+        <thead><tr><th>Product</th><th style="width:90px">Code</th><th style="width:60px">Qty</th><th style="width:120px">Extended</th><th style="width:44px"></th></tr></thead>
+        <tbody>${state.lines.map((l) => {
+          const p = MODEL.products.find((x) => x.id === l.productId) || {};
+          const entry = priceOf(l.productId, pb.id || null);
+          const ext = ((entry || {}).unitPrice || 0) * l.quantity;
+          return `<tr>
+            <td>${esc(p.name)}</td><td class="mono">${esc(p.productCode)}</td><td>${l.quantity}</td>
+            <td>${esc((entry || {}).currency || '')} ${ext.toLocaleString('en-US')}</td>
+            <td><button class="sf-btn-outline" data-rm="${esc(l.key)}" style="color:#ba0517">✕</button></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+      <p class="muted" style="margin-top:14px;font-size:12px">
+        Amounts come from the PricebookEntry for each product's default selling model in
+        ${esc(pb.name || 'the price book')}. Adjustments and proration are not applied here.
+      </p>`;
+
+  modal('Quote line items (' + state.lines.length + ')', body,
+    '<button class="sf-btn-outline" id="clearquote">Clear quote</button>' +
+    '<button class="sf-add" id="donequote">Done</button>');
+
+  document.getElementById('clearquote').onclick = () => { state.lines = []; closeModal(); render(); };
+  document.getElementById('donequote').onclick = closeModal;
+  document.querySelectorAll('[data-rm]').forEach((el) => el.addEventListener('click', (e) => {
+    state.lines = state.lines.filter((x) => x.key !== e.currentTarget.dataset.rm);
+    closeModal(); render(); openQuote();
+  }));
+}
+
+/**
+ * Simplified configurator: classification attributes read-only, bundle groups with
+ * selectable components and a running total. The full configurator (picklist editing,
+ * min/max enforcement, nested bundles) lives in the RCA Product Builder app.
+ */
+function openConfigurator(productId) {
+  const p = MODEL.products.find((x) => x.id === productId);
+  if (!p) return;
+  const pb = (pricebook() || {}).id || null;
+  const groups = MODEL.componentGroups.filter((g) => g.bundleId === p.id).sort((a, b) => a.sequence - b.sequence);
+  const comps = MODEL.relatedComponents.filter((rc) => rc.bundleId === p.id);
+  const chosen = {};
+  for (const rc of comps) {
+    chosen[rc.id] = { on: rc.isComponentRequired || rc.isDefaultComponent, qty: rc.quantity || 1 };
+  }
+
+  const attrRows = () => {
+    if (!p.classificationId) return '';
+    const rows = MODEL.classificationAttributes
+      .filter((ca) => ca.classificationId === p.classificationId && !ca.isHidden)
+      .sort((a, b) => a.sequence - b.sequence)
+      .map((ca) => {
+        const attr = MODEL.attributes.find((a) => a.id === ca.attributeId);
+        if (!attr) return '';
+        const v = ca.defaultValue || attr.defaultValue || '—';
+        return `<div class="cfg-attr"><span>${esc(attr.label)}${ca.isRequired ? ' *' : ''}</span><span class="v">${esc(v)}</span></div>`;
+      }).join('');
+    return rows ? `<div class="cfg-section"><h4>Attributes</h4>${rows}</div>` : '';
+  };
+
+  const compPrice = (rc) => {
+    if (rc.doesBundlePriceIncludeChild) return null;
+    if (!rc.childProductId) return null;
+    return priceOf(rc.childProductId, pb);
+  };
+
+  const total = () => {
+    const base = priceOf(p.id, pb);
+    let sum = (base || {}).unitPrice || 0;
+    for (const rc of comps) {
+      const c = chosen[rc.id];
+      if (!c.on) continue;
+      const entry = compPrice(rc);
+      if (entry) sum += entry.unitPrice * c.qty;
+    }
+    return { sum, currency: (base || {}).currency || '' };
+  };
+
+  const draw = () => {
+    const groupHtml = groups.map((g) => {
+      const inGroup = comps.filter((rc) => rc.groupId === g.id).sort((a, b) => a.sequence - b.sequence);
+      const minmax = (g.minComponents != null || g.maxComponents != null)
+        ? `<span class="minmax">select ${g.minComponents ?? 0}–${g.maxComponents ?? '∞'}</span>` : '';
+      return `<div class="cfg-group">
+        <div class="cfg-group-head"><span>${esc(g.name)}</span>${minmax}</div>
+        ${inGroup.map((rc) => {
+          const child = rc.childProductId
+            ? (MODEL.products.find((x) => x.id === rc.childProductId) || {}).name
+            : ((MODEL.classifications.find((x) => x.id === rc.childClassificationId) || {}).name || '') + ' (classification)';
+          const entry = compPrice(rc);
+          const priceHtml = rc.doesBundlePriceIncludeChild
+            ? '<span class="inc">Included</span>'
+            : entry ? `<span class="pr">${esc(entry.currency)} ${esc(entry.unitPrice)}</span>` : '<span class="pr muted">—</span>';
+          const c = chosen[rc.id];
+          return `<div class="cfg-comp">
+            <input type="checkbox" data-c="${esc(rc.id)}" ${c.on ? 'checked' : ''} ${rc.isComponentRequired ? 'disabled' : ''}>
+            <span class="nm">${esc(child)}${rc.isComponentRequired ? ' <span class="muted">(required)</span>' : ''}</span>
+            ${priceHtml}
+            <input type="number" data-cq="${esc(rc.id)}" value="${c.qty}"
+              min="${rc.minQuantity ?? 1}" ${rc.maxQuantity != null ? 'max="' + rc.maxQuantity + '"' : ''}
+              ${rc.isQuantityEditable ? '' : 'disabled'}>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }).join('');
+
+    const t = total();
+    const body = attrRows() +
+      (groups.length ? `<div class="cfg-section"><h4>Components</h4>${groupHtml}</div>` : '') +
+      `<div class="cfg-total"><span>Total</span><span>${esc(t.currency)} ${t.sum.toLocaleString('en-US')}</span></div>`;
+
+    modal('Configure: ' + (p.name || 'Untitled'), body,
+      '<button class="sf-btn-outline" id="cfg-cancel">Cancel</button>' +
+      '<button class="sf-add" id="cfg-add">Add to Quote</button>', true);
+
+    document.getElementById('cfg-cancel').onclick = closeModal;
+    document.getElementById('cfg-add').onclick = () => { addLines([p]); closeModal(); render(); };
+    document.querySelectorAll('[data-c]').forEach((el) => el.addEventListener('change', (e) => {
+      chosen[e.currentTarget.dataset.c].on = e.currentTarget.checked; draw();
+    }));
+    document.querySelectorAll('[data-cq]').forEach((el) => el.addEventListener('change', (e) => {
+      chosen[e.currentTarget.dataset.cq].qty = Math.max(1, Number(e.currentTarget.value) || 1); draw();
+    }));
+  };
+
+  draw();
+}
+
+render();
+</script>
