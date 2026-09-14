@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useStore, modelOf } from './model/store';
 import { validate, countBy, type StepKey } from './model/validate';
 import { exportWorkbook, buildTabs, POST_LOAD_STEPS } from './export/exportWorkbook';
+import { importWorkbook, isEmptyImport } from './import/importWorkbook';
 import { sampleModel } from './data/sample';
 import CatalogStep from './steps/CatalogStep';
 import PicklistsStep from './steps/PicklistsStep';
@@ -83,6 +84,38 @@ export default function ProductBuilder({ go }: { go: (route: string) => void }) 
     reader.readAsText(file);
   };
 
+  /**
+   * The exported workbook is also a save file: importing one rebuilds the
+   * catalog it was exported from, so you can park one client's design and
+   * come back to it later. Parse first, then ask before replacing — a file
+   * that fails to read must never cost the catalog on screen.
+   */
+  const importXlsx = async (file: File) => {
+    let imported;
+    try {
+      imported = await importWorkbook(file);
+    } catch {
+      alert('That file could not be read as an .xlsx workbook.');
+      return;
+    }
+    if (isEmptyImport(imported.model)) {
+      alert('No catalog tabs recognized in that workbook — is it an export from this tool?');
+      return;
+    }
+    if (
+      model.products.length > 0 &&
+      !confirm('This replaces everything currently in the builder. Continue?')
+    )
+      return;
+    store.replaceModel(imported.model);
+    setPage('catalog');
+    if (imported.warnings.length)
+      alert(
+        `Imported with ${imported.warnings.length} warning${imported.warnings.length === 1 ? '' : 's'}:\n\n` +
+          imported.warnings.join('\n'),
+      );
+  };
+
   return (
     <div className="app">
       <aside className="sidebar">
@@ -139,7 +172,22 @@ export default function ProductBuilder({ go }: { go: (route: string) => void }) 
               type="file"
               accept="application/json"
               style={{ display: 'none' }}
-              onChange={(e) => e.target.files?.[0] && loadJson(e.target.files[0])}
+              onChange={(e) => {
+                if (e.target.files?.[0]) loadJson(e.target.files[0]);
+                e.target.value = ''; // so picking the same file again still fires
+              }}
+            />
+          </label>
+          <label className="btn" style={{ textAlign: 'center', cursor: 'pointer' }}>
+            Import workbook (.xlsx)
+            <input
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                if (e.target.files?.[0]) void importXlsx(e.target.files[0]);
+                e.target.value = '';
+              }}
             />
           </label>
           <button className="btn danger" onClick={clearAll}>
@@ -283,6 +331,10 @@ function ExportPage() {
           <button className="btn primary" onClick={() => exportWorkbook(model)}>
             Download .xlsx
           </button>
+          <span className="muted">
+            The workbook is also a save file — <strong>Import workbook (.xlsx)</strong> in the sidebar
+            loads it back, so you can park this catalog and return to it later.
+          </span>
           {errors.length > 0 && (
             <span className="muted">
               You can still download, but the {errors.length} error
