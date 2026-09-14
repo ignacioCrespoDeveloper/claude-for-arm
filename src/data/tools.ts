@@ -155,4 +155,26 @@ export const SKILLS: SkillTool[] = [
     ],
     status: 'live',
   },
+  {
+    kind: 'skill',
+    id: 'catalog-preview',
+    command: 'sf-catalog-preview',
+    name: 'Catalog preview from a spreadsheet',
+    blurb:
+      'Hand it an Excel of product data and it renders how those products will look in Browse Catalog — the same design as the Product Builder preview — and generates every record needed to make them visible: catalog, categories, products, selling models, price book entries, bundle components.',
+    produces: 'A standalone preview.html plus load-ready CSVs in dependency order',
+    triggers: [
+      'share a product spreadsheet',
+      '"how will this look in the catalog"',
+      '"will these products show up"',
+      '"generate the catalog data"',
+    ],
+    bullets: [
+      'The preview replicates Browse Products and applies the same five visibility conditions as the org',
+      'Synthesizes the records the spreadsheet is missing — every assumption listed for correction',
+      'Flags products that would load cleanly and still stay invisible, with the reason',
+      'Zero-dependency scripts: reads the .xlsx and writes the CSVs in any project, no npm install',
+    ],
+    status: 'live',
+  },
 ];
