@@ -49,11 +49,12 @@ export const APPS: AppTool[] = [
     name: 'RCA Product Builder',
     blurb:
       'Design a Revenue Cloud Advanced catalog — categories, attributes, classifications, bundles and pricing — preview it exactly as Browse Catalog will render it, then export a load-ready workbook.',
-    produces: '.xlsx workbook, 16 tabs in dependency order',
+    produces: '.xlsx workbook, 16 tabs in dependency order — re-importable to continue a design',
     bullets: [
       'Preview replicates Browse Products and the product configurator',
       'Validation blocks the mistakes that actually fail on import',
       'Flags products that load cleanly and still stay invisible, with the reason',
+      'The exported workbook re-imports, so one catalog can be parked and resumed later',
       'Nothing leaves the browser',
     ],
     status: 'live',

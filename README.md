@@ -117,7 +117,8 @@ step is the whole point — nobody should have to go spelunking in `.claude/` to
 # RCA Product Builder
 
 A guided UI for designing a Salesforce Revenue Cloud Advanced product catalog, previewing it the way
-Browse Catalog will render it, and exporting a load-ready `.xlsx`.
+Browse Catalog will render it, and exporting a load-ready `.xlsx` — which **imports back in**, so a
+catalog can be parked and resumed later.
 
 Nothing leaves the browser. State is kept in `localStorage`, so a refresh does not lose work.
 
@@ -210,6 +211,25 @@ including the decision table refresh.
 `RecordType`, `UnitOfMeasure` and `ProrationPolicy` are resolved against records that already exist
 in the org — the workbook references them by name but does not create them.
 
+## The workbook is also a save file
+
+**Import workbook (.xlsx)** in the sidebar reads an exported workbook back into the builder —
+[`src/import/importWorkbook.ts`](src/import/importWorkbook.ts) is the exact inverse of the export,
+resolving every name and code lookup back into the model. So the deliverable and the save file are
+the same document: design client A's catalog, download the workbook, clear the builder and design
+client B, then re-import client A's workbook to pick up exactly where you left off. No separate
+project file to keep track of, and a workbook a colleague sends you opens the same way.
+
+Importing replaces what is in the builder (it asks first) and never destroys work on a file that
+fails to read — the file is parsed before anything is replaced. A workbook that has been edited by
+hand degrades politely: a row whose lookup no longer resolves is skipped and reported with its tab
+and row number, rather than refusing the whole file.
+
+Two lossy corners, both inherent to the format: rows are re-keyed with fresh internal ids on import,
+and a selling model or price book referenced by org Id comes back as the Id alone — the workbook
+never carried its name — so it shows as an *Already in the org* record with the name left blank.
+Re-exporting still produces the identical workbook; `tools/verify-export.mjs` asserts exactly that.
+
 **Selling models and price books can be referenced by Id instead of created.** The standard price
 book and the shipped selling models already exist in every org, and matching them by name is fragile.
 In *Selling models & pricing*, set **Record** to *Already in the org* and paste the record Id: that
@@ -240,9 +260,11 @@ npm run dump                      # every .xlsx in ./xlsx → tab-separated text
 node tools/dump-xlsx.mjs a.xlsx   # or one file
 ```
 
-`tools/verify-export.mjs` bundles the model and export code for Node, runs it against the sample
-catalog, checks that every cross-tab lookup resolves to a real row, round-trips a real workbook, and
-asserts the visibility rules still fire — removing a selling model option, removing a price entry, or
+`tools/verify-export.mjs` bundles the model, export and import code for Node, runs it against the
+sample catalog, checks that every cross-tab lookup resolves to a real row, round-trips a real
+workbook — including that **export → import → export reproduces the identical workbook**, both
+through the tab structures and through an actual `.xlsx` file, with existing-Id references intact —
+and asserts the visibility rules still fire — removing a selling model option, removing a price entry, or
 deactivating one must each hide the product and raise an error — and checks that every selling model
 type lands in the right summary bucket:
 
@@ -278,8 +300,9 @@ Then import the repo at vercel.com. It picks up the Vite preset; no environment 
 
 **Everyone gets their own workspace.** State lives in each person's `localStorage`, so two people
 opening the same URL do not see the same catalog and cannot edit one together. Sharing a catalog means
-**Save as JSON** → send the file → **Load JSON**. Real collaboration would need a backend, which this
-does not have.
+sending a file: the exported `.xlsx` itself re-imports via **Import workbook (.xlsx)**, or use
+**Save as JSON** → **Load JSON** for a byte-exact snapshot. Real collaboration would need a backend,
+which this does not have.
 
 **Nothing you type is transmitted.** Catalogs never leave the browser and the export is generated
 client-side, so a public URL does not expose customer data — it only exposes the tool. That said,
@@ -303,6 +326,7 @@ src/model/       types, store (zustand + localStorage), validation, visibility, 
 src/steps/       one component per wizard step
 src/preview/     Browse Catalog and the product configurator
 src/export/      workbook builder and API-name mapping
+src/import/      the inverse — reads an exported workbook back into the model
 src/data/        sample catalog
 
 .claude/skills/  the Claude Code skills

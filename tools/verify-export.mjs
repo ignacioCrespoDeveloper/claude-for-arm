@@ -17,6 +17,7 @@ await build({
   stdin: {
     contents: `
       export { buildTabs, LOAD_ORDER } from './src/export/exportWorkbook.ts';
+      export { modelFromTabs, workbookToTabs } from './src/import/importWorkbook.ts';
       export { sampleModel } from './src/data/sample.ts';
       export { validate } from './src/model/validate.ts';
       export { blockers } from './src/model/visibility.ts';
@@ -29,11 +30,12 @@ await build({
   format: 'esm',
   platform: 'node',
   outfile: entry,
-  external: ['exceljs'],
+  external: ['exceljs', 'exceljs/*'],
   logLevel: 'warning',
 });
 
-const { buildTabs, LOAD_ORDER, sampleModel, validate, blockers, frequencyOf } = await import(entry);
+const { buildTabs, LOAD_ORDER, modelFromTabs, workbookToTabs, sampleModel, validate, blockers, frequencyOf } =
+  await import(entry);
 
 const model = sampleModel();
 const issues = validate(model);
@@ -101,10 +103,63 @@ const sample = back.getWorksheet('ProductRelatedComponent');
 console.log(`ProductRelatedComponent header: ${sample.getRow(1).values.slice(1, 5).join(' | ')}`);
 console.log(`ProductRelatedComponent row 2:  ${sample.getRow(2).values.slice(1, 5).join(' | ')}`);
 
+const failures = [];
+
+// The workbook is also a save file: importing what was exported must rebuild a
+// model that exports the identical workbook — same tabs, columns and rows.
+console.log('\nImport round-trip:');
+{
+  const failures2 = [];
+  const check = (label, ok, detail = '') => {
+    console.log(`  ${ok ? '✓' : '✗'} ${label}`);
+    if (!ok) failures2.push(`${label}${detail ? `: ${detail}` : ''}`);
+  };
+  const sameTabs = (label, a, b) => {
+    const sa = JSON.stringify(a.map((t) => ({ ...t, rows: t.rows.map((r) => r.map((v) => String(v ?? ''))) })));
+    const sb = JSON.stringify(b.map((t) => ({ ...t, rows: t.rows.map((r) => r.map((v) => String(v ?? ''))) })));
+    let detail = '';
+    if (sa !== sb) {
+      for (let i = 0; i < Math.max(sa.length, sb.length); i++) {
+        if (sa[i] !== sb[i]) {
+          detail = `first difference near …${sa.slice(Math.max(0, i - 60), i + 60)}… vs …${sb.slice(Math.max(0, i - 60), i + 60)}…`;
+          break;
+        }
+      }
+    }
+    check(label, sa === sb, detail);
+  };
+
+  // Straight through the tab structures.
+  const pure = modelFromTabs(tabs);
+  check('re-importing the export raises no warnings', pure.warnings.length === 0, pure.warnings.join('; '));
+  sameTabs('imported model exports the identical workbook', buildTabs(pure.model), tabs);
+
+  // Through the actual .xlsx file, so cell-type conversion is exercised too.
+  const fromFile = modelFromTabs(workbookToTabs(back));
+  check('re-importing the .xlsx file raises no warnings', fromFile.warnings.length === 0, fromFile.warnings.join('; '));
+  sameTabs('model imported from the .xlsx exports the identical workbook', buildTabs(fromFile.model), tabs);
+
+  // Existing-record references survive the round trip: the referenced record
+  // stays out of its own tab and its children still carry the Id.
+  const refModel = sampleModel();
+  refModel.pricebooks[0].existingId = '01sAA0000012345';
+  refModel.sellingModels[0].existingId = '0PhAA0000098765';
+  const refTabs = buildTabs(refModel);
+  const refBack = modelFromTabs(refTabs);
+  check('existing-Id workbook re-imports without warnings', refBack.warnings.length === 0, refBack.warnings.join('; '));
+  sameTabs('existing-Id references survive export → import → export', buildTabs(refBack.model), refTabs);
+
+  // The import must still hold up when the validator and visibility rules run
+  // on what it produced — an imported catalog behaves like the one it came from.
+  check('imported sample validates clean of errors',
+    validate(pure.model).filter((i) => i.severity === 'error').length === errors.length);
+
+  failures.push(...failures2);
+}
+
 // The rule that costs the most time in a real project: a product that loads
 // cleanly but never appears because its pricing records are missing.
 console.log('\nVisibility rules:');
-const failures = [];
 
 const check = (name, mutate, expectReason, expectErrorMatch) => {
   const broken = mutate(sampleModel());
