@@ -122,13 +122,21 @@ Referenced in expression sets with dot notation: `SalesTransaction.LineItem.Unit
 `Setup → Revenue Settings → Context Definitions`, then the definition → **New Version** →
 map fields → **Activate**.
 
-**The three things that go wrong**
+**How a field value travels** — never field-to-field, always field → context attribute →
+field, two mappings per hop in the definition's **Map Data** tab (Quote Entities Mapping,
+Order Entities Mapping, asset section), and only at a lifecycle operation (order creation,
+order activation, asset update). The standard definition is **read-only — extend it, never
+edit it**. Full paths, recipes and the not-possible cases: `/sf-context-mapping`.
+
+**The four things that go wrong**
 
 1. **Versioning.** Context definitions are versioned. Editing means creating a new version
    and activating it. A change that "did nothing" is usually an unactivated version.
 2. **Mapping.** A custom field must be added as an attribute *and* mapped to its source
-   field. One without the other silently yields null.
-3. **Downstream refresh.** Expression sets referencing the changed context may need
+   field, with **Input and Output both enabled**. Any one missing silently yields null.
+3. **Wrong node.** Header fields live on Sales Transaction, line fields on Sales
+   Transaction Item — the wrong node saves cleanly and arrives blank.
+4. **Downstream refresh.** Expression sets referencing the changed context may need
    re-saving/re-activating to pick up the new attribute.
 
 For qualification, the context needs at least these attributes ✓:

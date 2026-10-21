@@ -88,8 +88,8 @@ cd ~/code/my-sf-project
 claude
 ```
 
-Type `/` and look for `sf-ticket-solution`, `sf-pricing-procedure`, `sf-tdd`,
-`sf-flow-design` and `sf-data-deploy`.
+Type `/` and look for `sf-ticket-solution`, `sf-pricing-procedure`, `sf-context-mapping`,
+`sf-tdd`, `sf-flow-design` and `sf-data-deploy`.
 If they are missing, jump to [Troubleshooting](#troubleshooting).
 
 ## 5. Test them for real
@@ -152,6 +152,32 @@ How would I give 15% off to accounts with Customer_Tier__c = 'Gold'?
 **Good looks like:** a named element, its position in the sequence **and why there**, the
 decision table behind it, the context tag that must be mapped first, and the activation plus
 refresh steps. If it hands you an element with no position, push back — order is the design.
+
+### `/sf-context-mapping`
+
+Ask it the question it was built for:
+
+```
+/sf-context-mapping
+
+I need Installation_Notes__c from the quote line to end up on the Asset. Org: mysandbox.
+```
+
+**Good looks like:** the verdict first (this one is a two-hop CD mapping), the path drawn
+out — QLI → OrderItem at order creation, OrderItem → Asset at activation — the node
+(Sales Transaction Item), one attribute with Input and Output enabled, the two mappings per
+hop, activation as a numbered step, and the sentence telling you the asset will **not**
+change if you edit the quote afterwards.
+
+Then test the honest-no side:
+
+```
+And can I map an Asset field back onto the quote line so it stays in sync?
+```
+
+**Good looks like:** "not possible as asked" stated plainly — no backwards mapping, no live
+sync — plus the nearest real thing (amendment/renewal operations, or a display-only Flow).
+If it hands you a mapping for this, that is a bug in the skill.
 
 ### `/sf-data-deploy`
 

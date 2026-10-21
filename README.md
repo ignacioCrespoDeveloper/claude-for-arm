@@ -33,6 +33,7 @@ page has a second tab for its template.
 |---------|--------------|----------|
 | [`/sf-ticket-solution`](.claude/skills/sf-ticket-solution/SKILL.md) | **RCA-specific.** Ticket → root cause with the query that proves it, the chosen mechanism and the rejected one, numbered steps with full Setup paths | A **Jira ticket body**, in one copyable block |
 | [`/sf-pricing-procedure`](.claude/skills/sf-pricing-procedure/SKILL.md) | **RCA-specific.** Reads a pricing procedure out of the org and explains what it does to a price, element by element — then what to add, and where in the sequence, to get an outcome | A walkthrough, or an add-this-element plan |
+| [`/sf-context-mapping`](.claude/skills/sf-context-mapping/SKILL.md) | **RCA-specific.** "Get this field from X to Y" → the Context Definition path (node, attribute, two mappings per hop) — or the honest verdict that CD is not needed, or that the flow is not possible | A mapping plan, verdict first |
 | [`/sf-tdd`](.claude/skills/sf-tdd/SKILL.md) | Technical Design Document against a fixed template — data model, components, integrations, security, limits, test and deployment strategy | `docs/tdd/<TICKET>-<slug>.md` with mermaid diagrams |
 | [`/sf-flow-design`](.claude/skills/sf-flow-design/SKILL.md) | Flow type, trigger, entry criteria, elements with fault paths, test cases — optionally the metadata XML | A flow spec, optionally a ready-to-validate `.flow-meta.xml` |
 | [`/sf-data-deploy`](.claude/skills/sf-data-deploy/SKILL.md) | Load and migration planning — object order, external IDs, `sf` CLI commands, per-step validation, rollback | A load plan with copy-pasteable commands |
@@ -63,6 +64,18 @@ since the definition without its version is a shell — rather than describing o
 skill also carries the known CLI trap: retrieving or deploying `ExpressionSetDefinitionVersion` and
 `DecisionMatrixDefinitionVersion` has documented failures, and a half-deployed pricing procedure is
 worse than one that did not deploy.
+
+### What `/sf-context-mapping` knows about field travel
+
+One reference file, [`mapping-paths.md`](.claude/skills/sf-context-mapping/references/mapping-paths.md),
+verified against Salesforce Help and the Summer '24 release notes: the flow graph
+(quote → order → asset, and which lifecycle operation fires each hop), the per-hop recipes
+including QuoteLineItem → Asset worked end-to-end, the failure modes ordered by frequency
+(unactivated version, wrong node, missing Input/Output toggle), and — the part most skills
+skip — the **not-needed table** (report joins, data loads, formulas, display-only Flows)
+and the **not-possible table** (backwards flows, live sync after ordering, type
+mismatches). Three consequences decide half the questions before any Setup path matters:
+nothing is live, nothing flows backwards, nothing is retroactive.
 
 ### What `/sf-ticket-solution` knows about RCA
 

@@ -165,5 +165,7 @@ Before you hand it over, check every one of these:
       (data load or manual), because in RCA that split is rarely obvious.
 - [ ] Rollback is one line and is true.
 
-Related: `/sf-tdd` when this needs a full design document, `/sf-flow-design` when the answer
-is orchestration, `/sf-data-deploy` when it needs a catalog or rule data load.
+Related: `/sf-context-mapping` when the ticket is really "get this field from X to Y",
+`/sf-pricing-procedure` when it lives inside the pricing stack, `/sf-tdd` when this needs a
+full design document, `/sf-flow-design` when the answer is orchestration, `/sf-data-deploy`
+when it needs a catalog or rule data load.
